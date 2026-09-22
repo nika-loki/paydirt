@@ -1,0 +1,9 @@
+# gtm-sandbox secrets guard — .env* never enters git
+.env
+.env.*
+!.env.example
+
+# OS / tooling noise
+.DS_Store
+node_modules/
+.mimosa/

@@ -1,0 +1,61 @@
+# GTM Sandbox — one workflow, three environments (development / pilot / production).
+#
+# Contract (see references/promotion.md):
+# - The dispatch input `environment` selects the GitHub environment, which
+#   unlocks that environment's secrets and required reviewers.
+# - The app receives GTM_ENVIRONMENT and secrets as env vars.
+# - DRY_RUN: anything other than the literal "false" is a dry run. When the
+#   input is empty (scheduled runs), the app derives the default per
+#   environment: dry for development/pilot, live for production.
+name: gtm-workflow
+
+on:
+  schedule:
+    - cron: "17 13 * * 1-5" # weekdays 13:17 UTC (avoid :00 to reduce load)
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Which sandbox runs the workflow
+        type: choice
+        options: [development, pilot, production]
+        default: development
+      dry_run:
+        description: Force dry run (overrides app default)
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: gtm-${{ inputs.environment || 'development' }}
+  cancel-in-progress: false
+
+jobs:
+  run-gtm:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'development' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - name: Run GTM workflow
+        env:
+          GTM_ENVIRONMENT: ${{ inputs.environment || 'development' }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          # Map only the secrets this job needs — explicitly, by name.
+          CRM_API_KEY: ${{ secrets.CRM_API_KEY }}
+          CRM_BASE_URL: ${{ secrets.CRM_BASE_URL }}
+          EMAIL_API_KEY: ${{ secrets.EMAIL_API_KEY }}
+          SENDER_DOMAIN: ${{ secrets.SENDER_DOMAIN }}
+          ENRICHMENT_API_KEY: ${{ secrets.ENRICHMENT_API_KEY }}
+          WAREHOUSE_URL: ${{ secrets.WAREHOUSE_URL }}
+          AGENT_MODEL: ${{ secrets.AGENT_MODEL }}
+          GTM_TIMEZONE: ${{ secrets.GTM_TIMEZONE }}
+          MAX_ACTIONS_PER_RUN: ${{ secrets.MAX_ACTIONS_PER_RUN }}
+          DAILY_BUDGET_USD: ${{ secrets.DAILY_BUDGET_USD }}
+        run: node apps/agent/main.js
