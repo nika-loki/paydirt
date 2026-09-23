@@ -1,4 +1,4 @@
-# Design — GTM Sandbox (sandbox-bootstrap repo)
+# Design — GTM Sandbox (paydirt repo, formerly sandbox-bootstrap)
 
 Date: 2026-09-23 · Version: 0.1.0
 

@@ -1,10 +1,10 @@
 {
-  "name": "dev-sandbox-bootstrap-8c662755",
+  "name": "dev-paydirt-8c662755",
   "plugins": [
     {
       "name": "gtm-sandbox",
       "source": "./gtm-sandbox",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "description": "Agentic sandbox environments for GTM workflows: mono-repo .env.* secrets management, GitHub environment secret sync, and development → pilot → production promotion.",
       "displayName": "GTM Sandbox"
     }

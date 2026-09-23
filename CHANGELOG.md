@@ -2,6 +2,18 @@
 
 All notable changes to GTM Sandbox are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is semantic.
 
+## [0.4.0] — 2026-09-23
+
+### Changed
+
+- Brand rename: the repo and marketplace are now **paydirt** (formerly `sandbox-bootstrap`). Install path changes to `/plugin marketplace add nika-loki/paydirt` + `/plugin install gtm-sandbox@paydirt`; the plugin itself keeps the name `gtm-sandbox`.
+- All three marketplace catalogs renamed to `paydirt` in lockstep with both plugin manifests (version 0.4.0).
+- README/CONTRIBUTING badges and clone URLs point at `nika-loki/paydirt`.
+
+### Decided
+
+- Positioning per the design spec (`docs/superpowers/specs/2026-09-23-paydirt-monorepo-design.md`): paydirt becomes a governed go-to-market systems monorepo — plugin marketplace + deployable Vercel Workflow scenarios + connector substrate. This release ships the rename; the monorepo restructure follows as 0.5.0.
+
 ## [0.3.0] — 2026-09-23
 
 ### Added

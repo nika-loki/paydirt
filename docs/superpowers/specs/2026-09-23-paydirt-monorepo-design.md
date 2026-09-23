@@ -34,7 +34,7 @@ A single open-source repo consumable through three doors, ordered by audience si
 1. First connectors: **HubSpot, then Clay**; Salesforce third (follow-up).
 2. First workflows: **`hubspot-clay-sync`** (HubSpot → Clay only in v1; reverse sync is follow-up) and **`crm-hygiene`** (read-only; doubles as the public demo).
 3. **Hono** app shell; **pnpm** workspaces; Node 22; workflows dir named `workflows/`.
-4. Plugin bumps to **0.4.0** (single release covering rollout steps 1–7).
+4. Plugin versioning: the brand rename shipped as **0.4.0** (rename-only release); the monorepo restructure (rollout steps 2–8) lands as **0.5.0**. Lockstep rule (both manifests + all catalogs) applies to each bump.
 
 ## Repo layout (target)
 
@@ -131,7 +131,7 @@ One new skill reference, `references/vercel-workflows.md`: choosing GitHub Actio
 
 ## Rollout (ordered; each step keeps `for t in tests/*.sh; do bash "$t"; done` green)
 
-1. **Brand rename + docs**: catalogs → `paydirt`, README/CONTRIBUTING badges, clone URLs, install snippets (`plugin install gtm-sandbox@paydirt`), tagline with "go-to-market" expanded; plugin manifests → 0.4.0 + CHANGELOG (steps 1–7 = one release).
+1. **Brand rename + docs** (done — shipped as the 0.4.0 release): catalogs → `paydirt`, README/CONTRIBUTING badges, clone URLs, install snippets (`plugin install gtm-sandbox@paydirt`), tagline with "go-to-market" expanded; plugin manifests + CHANGELOG in lockstep. Steps 2–8 land as the **0.5.0** release.
 2. **Workspace scaffold**: `pnpm-workspace.yaml`, root `package.json`, `@paydirt/core`, `.gitignore` (committed lockfile; ignore `.mimosa/`).
 3. **HubSpot connector** per contract, with tests.
 4. **Clay connector** per contract, with tests.

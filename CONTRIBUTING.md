@@ -5,8 +5,8 @@ Thanks for improving GTM Sandbox. The bar to keep in mind: **nothing in this rep
 ## Development loop
 
 ```bash
-git clone https://github.com/nika-loki/sandbox-bootstrap.git
-cd sandbox-bootstrap
+git clone https://github.com/nika-loki/paydirt.git
+cd paydirt
 
 # run the offline test suites (no network, no real GitHub account needed)
 for t in tests/*.sh; do bash "$t"; done

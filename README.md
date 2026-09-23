@@ -1,10 +1,12 @@
 # GTM Sandbox
 
-**Pilot-to-production environments for GTM automations, with secrets that never leave the owner's hands.**
+**Pilot-to-production environments for go-to-market (GTM) automations, with secrets that never leave the owner's hands.**
 
-[![CI](https://github.com/nika-loki/sandbox-bootstrap/actions/workflows/ci.yml/badge.svg)](https://github.com/nika-loki/sandbox-bootstrap/actions/workflows/ci.yml)
+*gtm-sandbox* is the first plugin in **paydirt** — an open-source monorepo of governed go-to-market systems: agent skills, deployable workflow scenarios, and connector substrate.
+
+[![CI](https://github.com/nika-loki/paydirt/actions/workflows/ci.yml/badge.svg)](https://github.com/nika-loki/paydirt/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/plugin-v0.3.0-blue)](plugins/gtm-sandbox/.claude-plugin/plugin.json)
+[![Version](https://img.shields.io/badge/plugin-v0.4.0-blue)](plugins/gtm-sandbox/.claude-plugin/plugin.json)
 
 One person — the **owner** — holds every credential locally in `.env.*` files and pushes them to GitHub environment secrets with the `gh` CLI. **Developers** never see a single value: they get permission to *use* secrets by running workflows against gated environments, nothing more, nothing less. That split — "use without seeing" — is enforced by GitHub itself, not by discipline.
 
@@ -64,8 +66,8 @@ The skill follows the open [Agent Skills](https://agentskills.io) format — one
 **Claude Code**
 
 ```
-/plugin marketplace add nika-loki/sandbox-bootstrap
-/plugin install gtm-sandbox@sandbox-bootstrap
+/plugin marketplace add nika-loki/paydirt
+/plugin install gtm-sandbox@paydirt
 ```
 
 **ZCode** — Plugin Marketplace → Add → paste this repo's `plugins/` directory, then install **GTM Sandbox**.
