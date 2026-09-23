@@ -26,12 +26,26 @@ Let AI agents build and operate GTM automations without secrets leaking into git
 2. **CI**: secrets only via explicit per-variable `env:` mapping on jobs declaring `environment:`; `permissions: {}`; gitleaks recommended as a second net.
 3. **Agent runtime**: secrets read from process environment, never logged, never CLI arguments; per-run action and budget caps (`MAX_ACTIONS_PER_RUN`, `DAILY_BUDGET_USD`) so runaway agents hit walls.
 
+## Universal packaging
+
+The skill layer is the portable contract: `SKILL.md` + `references/` + `scripts/` + `assets/` follows the open Agent Skills format (agentskills.io) adopted by Claude Code, Codex, Gemini CLI, Cursor, and ZCode — identical content works in every tool. Everything tool-specific lives in thin manifests around it:
+
+- `plugins/gtm-sandbox/.claude-plugin/plugin.json` — Claude Code plugin manifest.
+- `plugins/gtm-sandbox/.zcode-plugin/plugin.json` — ZCode plugin manifest.
+- Both point at the *same* `skills/` and `commands/` directories; no content is duplicated per tool.
+- Marketplaces: `.claude-plugin/marketplace.json` (Claude Code), root `marketplace.json` (ZCode / generic), `plugins/marketplace.json` (local ZCode dev testing).
+- Slash commands (`/sandbox-init`, `/secrets-sync`) are plugin-layer sugar for tools that support commands; the SKILL.md documents the equivalent manual path so Codex and other agents lose nothing.
+- Skill discovery paths are the one thing that still differs per tool, so `install.sh` handles it: exact-name matching against a fixed tool list, copies into each tool's skills directory, guarded removal, no glob/pattern interpretation of user input.
+
+Version bumps must update both plugin manifests and all three catalogs in lockstep.
+
 ## Distribution
 
 - `plugins/gtm-sandbox/` — plugin source of truth (skill + commands + scripts + assets).
+- `install.sh` — universal installer for tools without marketplace support.
 - `plugins/marketplace.json` — local dev catalog for testing in ZCode.
-- Root `marketplace.json` — catalog for consumers adding this repo (via git URL) as a marketplace once public.
-- The skill is also installed globally for the author at `~/.agents/skills/gtm-sandbox/` (standard cross-tool location; `.zcode/skills/` reserved for overrides).
+- Root `marketplace.json` + `.claude-plugin/marketplace.json` — catalogs for consumers adding this repo as a marketplace once public.
+- The skill is also installed globally for the author at `~/.agents/skills/gtm-sandbox/` (cross-tool default location).
 
 ## Future work (explicitly out of v0.1)
 

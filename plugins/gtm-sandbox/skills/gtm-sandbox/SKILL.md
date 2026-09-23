@@ -24,7 +24,7 @@ The same code runs in all three; only the environment (and therefore the secrets
 
 ## Scaffolding a project
 
-Run the `sandbox-init` command (`/sandbox-init <path>`). It creates the mono-repo layout, copies this skill's templates and scripts, initializes git, and (with user confirmation) creates the GitHub repo and the three environments. The manual path, in order:
+Fastest path: the `sandbox-init` command (`/sandbox-init <path>`), available when this skill is installed as a plugin in a tool that supports commands (Claude Code, ZCode). In any other agent, follow the manual path below — it is the same steps, done by hand. Either way:
 
 1. Create the layout: `.github/workflows/gtm-workflow.yml`, `.gitignore` (with the secrets guard), `.env.example`, empty `.env.development` / `.env.pilot` / `.env.production`, `scripts/sync-secrets.sh`, plus `apps/` and `packages/` for workflow code.
 2. `git init -b main` and verify `git status` shows no `.env.*` file as staged or tracked.

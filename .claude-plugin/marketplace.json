@@ -1,0 +1,12 @@
+{
+  "name": "sandbox-bootstrap",
+  "owner": { "name": "Justin Cheu" },
+  "plugins": [
+    {
+      "name": "gtm-sandbox",
+      "source": "./plugins/gtm-sandbox",
+      "version": "0.2.0",
+      "description": "Agentic sandbox environments for GTM workflows: .env.* secrets management, GitHub environment sync, and development → pilot → production promotion."
+    }
+  ]
+}
