@@ -7,9 +7,9 @@ Thanks for improving GTM Sandbox. The bar to keep in mind: **nothing in this rep
 ```bash
 git clone https://github.com/nika-loki/paydirt.git
 cd paydirt
+pnpm install          # workspace deps (committed lockfile)
 
-# run the offline test suites (no network, no real GitHub account needed)
-for t in tests/*.sh; do bash "$t"; done
+pnpm test             # the full offline gate: bash suites + unit tests
 ```
 
 The suites use a mock `gh` binary and a fake `$HOME`; they must pass on both Linux and macOS bash (CI runs both).
