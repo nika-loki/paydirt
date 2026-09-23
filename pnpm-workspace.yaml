@@ -1,0 +1,4 @@
+packages:
+  - "connectors/*"
+  - "workflows/*"
+  - "packages/*"

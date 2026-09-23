@@ -1,0 +1,13 @@
+{
+  "name": "paydirt",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.6.5",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "bash -c 'for t in tests/*.sh; do bash \"$t\" || exit 1; done' && pnpm -r --if-present run test",
+    "test:bash": "bash -c 'for t in tests/*.sh; do bash \"$t\" || exit 1; done'",
+    "test:unit": "pnpm -r --if-present run test",
+    "typecheck": "pnpm -r --if-present run typecheck"
+  }
+}
