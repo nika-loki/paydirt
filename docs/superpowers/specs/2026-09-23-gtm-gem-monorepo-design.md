@@ -1,156 +1,162 @@
-# Design — gtm-gem monorepo: plugin marketplace + deployable Vercel Workflows
+# Design — gtm-gem: an open-source GTM toolbox monorepo
 
-Date: 2026-09-23 · Status: awaiting user review
+Date: 2026-09-23 · Status: awaiting user review (rev 2 — incorporates toolbox/connector direction from user)
 
 ## Goal
 
-Turn the renamed `gtm-gem` repo (formerly `sandbox-bootstrap` / gtm-sandbox) into a monorepo with two halves that share one brand:
+`gtm-gem` is an open-source **GTM toolbox** consumable from a single repo through three doors:
 
-1. **A multi-plugin marketplace** — `gtm-sandbox` becomes the first *gem*; the catalogs are renamed from `sandbox-bootstrap` to `gtm-gem` and structured so each plugin lists and versions independently.
-2. **Deployable Vercel Workflows for GTM** — self-contained TypeScript apps under `apps/`, built on the Workflow DevKit, each independently deployable to Vercel, following the repo's existing secrets and dry-run conventions.
+1. **Deploy a workflow** — pick a scenario (e.g., HubSpot↔Clay sync), `vercel deploy` it as a self-contained Vercel Workflow app.
+2. **Install a plugin** — agent skills/commands via the plugin marketplace (`gtm-sandbox` is the first gem).
+3. **Reuse a connector** — typed, dry-run-aware client packages for HubSpot, Clay, Salesforce, … that workflows (or anyone's own code) compose.
+
+The connecting idea: **connectors are building blocks, workflows are scenarios composed from them, plugins are the agent cockpit that operates both** — all sharing one conventions layer (secrets hygiene, dry-run defaults, budget caps, human gates).
 
 ## Non-goals (explicitly out of this spec)
 
-- **Replacing GitHub Actions.** The gtm-sandbox plugin and its `gtm-workflow.yml` template remain unchanged and supported. Vercel is an additional runtime, not a migration.
-- **Automated secrets sync to Vercel.** v1 documents the manual owner path (`vercel env add`, values never displayed). A `--target vercel` mode for `sync-secrets.sh` is future work.
-- **Turborepo.** pnpm workspaces alone; add task orchestration only when build times demand it.
-- **A UI/dashboard app.** Workflow apps are headless cron-style services.
+- **Replacing GitHub Actions.** The gtm-sandbox plugin stays GitHub-native and unchanged; Vercel is an additional runtime.
+- **npm-publishing connectors.** Workspace-internal (`workspace:*` deps) first; publishing `@gtm-gem/*` to npm is follow-up once APIs stabilize.
+- **Automated secrets sync to Vercel.** v1 documents the manual owner path (`vercel env add`; values never displayed). A `--target vercel` mode for `sync-secrets.sh` is future work.
+- **Turborepo, connector-scaffolding CLIs, template generators.** Recipes in CONTRIBUTING + one exemplar each; automation later.
+- **A UI/dashboard app.**
 
-## Key assumptions (made without user input — confirm or correct)
+## Key assumptions (made without full user confirmation — correct at review)
 
-1. **Hybrid relationship**: workflow apps are standalone-deployable *and* the plugin references them (operator cockpit). Users who never install the plugin can still clone an app and `vercel deploy`.
-2. **New canonical repo path is `nika-loki/gtm-gem`.** The local clone has no git remote; README/badges/clone URLs must be updated once the GitHub rename is confirmed.
-3. **pnpm** as the package manager (Vercel-native, minimal workspace config).
-4. **Hono** as the app shell for workflow apps (headless, tiny; first-class DevKit integration). Next.js reserved for a future dashboard app if ever needed.
-5. **Two starter apps** — `outbound-sequencer` and `crm-hygiene` — chosen to prove the pattern across both blast radii (external email vs. read-only report). Names and scope are replaceable at review time.
-6. Plugin version bumps to **0.4.0** for the marketplace rename + monorepo restructure, per the lockstep rule.
+1. **First connectors: HubSpot, then Clay.** Salesforce third (user named all three; two proves reuse, the third is a follow-up).
+2. **First workflows: `hubspot-clay-sync`** (the user's own example — external writes, approval-gated) **and `crm-hygiene`** (read-only weekly report reusing the HubSpot connector — proves connector reuse across workflows). `outbound-sequencer` moves to follow-up (it needs email + enrichment connectors that don't exist yet).
+3. **Directory named `workflows/`, not `apps/`** — clearer for open-source consumers; Vercel doesn't care (`rootDirectory` per project).
+4. **Hono** app shell; **pnpm** workspaces; Node 22.
+5. Canonical repo path `nika-loki/gtm-gem` (local clone has no remote yet; user confirms on GitHub).
+6. Plugin bumps to **0.4.0** for the rename + restructure (single release covering rollout steps 1–7).
 
 ## Repo layout (target)
 
 ```
 gtm-gem/
-├── apps/                              # deployable Vercel Workflow apps
-│   ├── outbound-sequencer/            # enrich → draft → approval hook → send
+├── connectors/                        # typed client packages (the toolbox)
+│   ├── hubspot/                       # @gtm-gem/connector-hubspot
+│   │   ├── src/
+│   │   ├── test/                      # vitest, mocked fetch — offline
+│   │   ├── .env.example               # key names only, replace-me values
+│   │   └── package.json
+│   └── clay/                          # @gtm-gem/connector-clay
+├── workflows/                         # deployable scenario apps
+│   ├── hubspot-clay-sync/
 │   │   ├── api/
-│   │   │   ├── workflows/             # workflow definitions ("use workflow" / "use step")
-│   │   │   └── trigger.ts             # POST route: auth (CRON_SECRET) → start()
-│   │   ├── src/                       # step helpers, clients
-│   │   ├── test/                      # vitest unit tests (steps are plain functions)
-│   │   ├── vercel.json                # crons hitting /api/trigger
-│   │   ├── package.json
-│   │   └── .env.example               # placeholder key names only
-│   └── crm-hygiene/                   # same shape; read-only analysis + report
-├── packages/                          # shared TS — created only when real duplication appears
-│   └── (empty for now)
+│   │   │   ├── workflows/             # "use workflow" / "use step" definitions
+│   │   │   └── trigger.ts             # POST: CRON_SECRET auth → start()/resumeHook()
+│   │   ├── src/                       # scenario steps
+│   │   ├── test/                      # vitest unit tests for steps
+│   │   ├── vercel.json                # crons → /api/trigger (jittered minute)
+│   │   ├── .env.example
+│   │   └── package.json               # deps: @gtm-gem/connector-hubspot (workspace:*)
+│   └── crm-hygiene/                   # same shape; read-only
+├── packages/
+│   └── core/                          # @gtm-gem/core: RunContext, dry-run guard, budget meter
 ├── plugins/
-│   └── gtm-sandbox/                   # unchanged position; single source of truth stays
-│       ├── .claude-plugin/plugin.json
-│       ├── .zcode-plugin/plugin.json
-│       ├── skills/gtm-sandbox/        # + references/vercel-workflows.md (new)
-│       └── commands/
-├── pnpm-workspace.yaml                # apps/*, packages/*
-├── package.json                       # workspace root; test/dev scripts
-├── marketplace.json                   # renamed "gtm-gem"; one entry per plugin
-├── .claude-plugin/marketplace.json    # same rename
-├── plugins/marketplace.json           # same rename (local dev catalog)
+│   └── gtm-sandbox/                   # unchanged position; + references/vercel-workflows.md
+├── pnpm-workspace.yaml                # connectors/*, workflows/*, packages/*
+├── package.json                       # workspace root
+├── marketplace.json                   # "gtm-gem" (renamed from sandbox-bootstrap)
+├── .claude-plugin/marketplace.json
+├── plugins/marketplace.json
 ├── install.sh                         # unchanged
-├── tests/                             # existing bash suites + new structure check
+├── tests/                             # bash suites + new structure check
 └── docs/
 ```
 
-Positioning rule: **`plugins/` never imports from `apps/` and vice versa.** They share conventions (below), not code. The skill layer stays pure markdown/bash so it remains installable everywhere.
+**Layering rule (one-way arrows, enforced by review):**
 
-## Marketplace changes
+```
+workflows ──► connectors ──► @gtm-gem/core
+workflows ──────────────────► @gtm-gem/core
+plugins ──► (nothing; markdown/bash only, never imports TS)
+```
 
-- Catalog `"name"`: `sandbox-bootstrap` → `gtm-gem` in all three catalogs.
-- Catalogs already key plugins by entry; adding a second plugin later = new `plugins/<name>/` dir + one entry per catalog + its own version. The lockstep rule extends to: *a plugin's version must match across both manifests and all catalogs that list it.*
-- README install instructions become:
+Nothing imports from `workflows/`; `plugins/` never imports from `apps/` or vice versa. The skill layer stays pure so it remains installable in every agent tool.
 
-  ```
-  /plugin marketplace add nika-loki/gtm-gem
-  /plugin install gtm-sandbox@gtm-gem
-  ```
+## The connector contract
 
-## Workflow app template (the repeatable shape)
+Every `connectors/<name>/` package follows one shape, so a new connector is a copy-adapt exercise:
 
-Every app in `apps/` follows one skeleton so a new GTM workflow is a copy-adapt exercise:
+- **Typed client** wrapping one external system. Secrets from `process.env` only (`HUBSPOT_API_KEY`, `CLAY_API_KEY`, …), never logged, never CLI arguments, never in thrown-error messages.
+- **Dry-run-aware writes.** The client is constructed with a `RunContext` (from `@gtm-gem/core`). Every write operation checks `ctx.dryRun`: in dry mode it performs no network mutation and returns a `{ planned: … }` description instead. Reads always execute.
+- **Budget metering.** `ctx.budget.charge(usd, reason)` on every billable API call; throws when `DAILY_BUDGET_USD` is exhausted. Caps are enforced by the toolbox, not by discipline.
+- **Redact-by-construction logging.** Helpers accept key *names* for diagnostics; there is no code path that formats a secret value into a string.
+- **Tests:** unit tests with mocked `fetch` — fully offline, no real accounts.
+- **`.env.example`** lists required key names with `replace-me` values; committed `.env*` is blocked repo-wide by the existing pre-commit guard.
 
-- **Entry**: Hono app; single protected route `POST /api/trigger` → `start(workflow)`. Auth via `CRON_SECRET` bearer header so only the owner's cron (or a human with the token) can fire runs.
-- **Workflows**: `api/workflows/*.ts`. Orchestration functions use `"use workflow"`; all I/O lives in `"use step"` functions (full Node access, cached, retryable).
-- **Scheduling**: `vercel.json` `crons` → `/api/trigger` at a jittered minute (repo convention: avoid `:00`).
-- **Env mapping** (Vercel environments ↔ GTM lifecycle):
+## `@gtm-gem/core` (the conventions layer, made importable)
 
-  | GTM stage  | Vercel environment | Deploy/trigger path                     |
-  | ---------- | ------------------ | --------------------------------------- |
-  | development | development (local) | `pnpm dev` + manual trigger             |
-  | pilot      | preview            | preview deployment + manual trigger     |
-  | production | production         | production deployment + Vercel Cron     |
+Small by design: `RunContext` (environment, dryRun flag, budget meter), the dry-run rule (`DRY_RUN` anything other than literal `"false"` is dry; default dry everywhere except production), and the budget/action caps (`MAX_ACTIONS_PER_RUN`, `DAILY_BUDGET_USD`). This is the existing plugin convention, extracted so connectors and workflows share one implementation instead of restating it.
 
-- **Conventions carried over from the plugin, unchanged**:
-  - `DRY_RUN`: anything other than the literal `false` is a dry run; default dry everywhere except production.
-  - Secrets are read from `process.env` inside steps only; never logged, never CLI arguments, never returned in run output. Key names are discussable; values are not.
-  - Budget/action caps (`MAX_ACTIONS_PER_RUN`, `DAILY_BUDGET_USD`) enforced in steps.
-  - `.env.example` files carry `replace-me` placeholders; no `.env*` is ever committed (the repo-wide pre-commit guard extends to `apps/`).
+## Workflow app template (the repeatable scenario shape)
+
+- **Entry**: Hono app; one protected route `POST /api/trigger` → `start(workflow)`, also serving `resumeHook` for approvals. Auth: `CRON_SECRET` bearer header — only the owner's cron or the owner themselves fires/resumes runs.
+- **Workflows**: orchestration in `"use workflow"` functions; all I/O (via connectors) in `"use step"` functions.
+- **Scheduling**: `vercel.json` crons at a jittered minute.
+- **Blast-radius taxonomy** — every workflow declares one, which determines its gate:
+
+  | Class          | Example            | Gate                                    |
+  | -------------- | ------------------ | --------------------------------------- |
+  | `read-only`    | crm-hygiene        | none beyond CRON_SECRET                 |
+  | `writes-internal` | hubspot-clay-sync | approval hook before first write batch  |
+  | `sends-external` | (future) outbound-sequencer | approval hook + production-only sends |
+
+  Contributors self-classify in the workflow README; reviewers enforce. `DRY_RUN` still applies inside every class regardless of gate.
+
+- **Env mapping**: development = local (`pnpm dev` + manual trigger) · pilot = preview deployment + manual trigger · production = production deployment + cron.
 
 ### The human gate: approval hooks replace reviewer approvals
 
-On GitHub Actions, `pilot`/`production` are gated by environment reviewers. On Vercel Workflows, the same control is a `createHook()` pause before any live external action:
+GitHub Actions gates `pilot`/`production` with environment reviewers; Vercel Workflows get the same control with `createHook()`:
 
 ```
-draft emails (steps) → createHook({ token: "approval:<run-id>" })
-  → resumed { approved: true }  → send step runs
-  → resumed { approved: false } → run ends, draft discarded
+compute planned writes (steps, dry) → createHook({ token: "approval:<run-id>" })
+  → resumed { approved: true }  → write steps execute (still DRY_RUN-respecting)
+  → resumed { approved: false } → run ends, plan discarded
 ```
 
-`resumeHook` is exposed via the same `POST /api/trigger` route (owner-only, `CRON_SECRET`), so the approval decision stays an owner privilege — the trust model's "use without seeing" carries over: developers can deploy and trigger dry runs; only the owner holds the secret that releases live sends.
+`resumeHook` rides the same owner-only route, so the trust model's "use without seeing" carries over: developers can deploy and trigger dry runs; only the owner holds the secret that releases live writes.
 
-## Starter apps
+## First scenarios
 
-**`outbound-sequencer`** (high blast radius — proves the full gate):
+**`hubspot-clay-sync`** (`writes-internal`): pull new/changed contacts from HubSpot → push to a Clay table → approval hook → apply writes. One direction in v1 (HubSpot → Clay); the reverse (Clay enrichment written back to HubSpot) is follow-up. Budget-capped API calls.
 
-1. `fetchSegments` (step): pull lead list from CRM/warehouse.
-2. `enrichLeads` (step): call enrichment API; budget-capped.
-3. `draftEmails` (step): LLM drafts via `DurableAgent` or `generateText`; stored to run output only.
-4. `approval` hook: owner approves/edits/rejects the batch.
-5. `sendEmails` (step): `DRY_RUN !== "false"` short-circuits; otherwise send via email API.
-
-**`crm-hygiene`** (low blast radius — proves the pattern without external sends): weekly scan for duplicates/stale records → summary report written to a namespaced stream; no approval hook needed (nothing leaves the account).
-
-Both use `replace-me` placeholder env keys drawn from the plugin's existing vocabulary (`CRM_API_KEY`, `EMAIL_API_KEY`, `ENRICHMENT_API_KEY`, …) so the two halves of the repo tell one story.
+**`crm-hygiene`** (`read-only`): weekly HubSpot scan for duplicates/stale records → summary to a namespaced stream. No approval hook; proves a second workflow reuses the HubSpot connector unchanged.
 
 ## Plugin integration (thin in v1)
 
-One new skill reference, `plugins/gtm-sandbox/skills/gtm-sandbox/references/vercel-workflows.md`:
+One new skill reference, `plugins/gtm-sandbox/skills/gtm-sandbox/references/vercel-workflows.md`: when to choose GitHub Actions vs. a Vercel workflow app; the deploy recipe (`vercel link` → owner runs `vercel env add` per environment → `vercel deploy` → set `CRON_SECRET`); how DRY_RUN / approval hooks / budget caps map across the two runtimes. No new commands or scripts in v1.
 
-- When to choose GitHub Actions (existing template) vs. a Vercel Workflow app.
-- Deploy recipe: clone/scaffold → `vercel link` → owner runs `vercel env add` per environment (values never displayed by Vercel) → `vercel deploy` → set `CRON_SECRET`.
-- How the DRY_RUN / approval-hook / budget conventions map between the two runtimes.
+## Open-source contribution story
 
-No new slash commands and no script changes in v1 — the reference documents the manual path first, matching how `/sandbox-init` itself started.
+- **README as catalog**: a matrix of workflows × connectors used × env keys required × blast radius × gate. The three doors each get a two-line "start here".
+- **CONTRIBUTING gains two recipes** (mirroring the existing "adding a new agent tool" recipe): *adding a connector* (contract above + test requirements) and *adding a workflow* (template shape + blast-radius declaration).
+- **Connector PR review invariants** (the repo's secrets bar, extended): no value logging, dry-run on all writes, budget hooks on billable calls, placeholder-only examples, offline tests.
+- MIT stays. Internal versions via workspace deps; independent semver per package starts only when published.
 
 ## Testing
 
-- Existing bash suites keep running green untouched — nothing under `plugins/` or `tests/` moves.
-- New `tests/test-structure.sh` (offline, bash): catalogs renamed and consistent with manifests; every `apps/*` has `package.json`, `vercel.json`, `.env.example` with no real-looking values; no `.env*` committed anywhere.
-- Per-app vitest: unit tests for steps (plain functions — no compiler needed, fully offline). Integration tests with `@workflow/vitest` are optional and excluded from CI for now.
-- CI: existing matrix (Linux + macOS bash) plus one Node 22 job running `pnpm install --frozen-lockfile && pnpm -r test`.
+- Existing bash suites untouched; new offline `tests/test-structure.sh`: catalogs renamed and consistent; every `connectors/*` and `workflows/*` has `package.json` + `.env.example` with no real-looking values; blast-radius declared in each workflow README; no committed `.env*`.
+- Per-package vitest with mocked `fetch` (offline). `@workflow/vitest` integration tests optional, excluded from CI for now.
+- CI: existing bash matrix + one Node 22 job (`pnpm install --frozen-lockfile && pnpm -r test`).
 
-## Rename/restructure rollout (ordered)
+## Rollout (ordered; each step keeps `for t in tests/*.sh; do bash "$t"; done` green)
 
-1. **Marketplace rename + docs**: catalogs → `gtm-gem`, README/CONTRIBUTING badges, clone URLs, install snippets; plugin manifests 0.3.0 → 0.4.0; CHANGELOG entry. Commit.
-2. **Workspace scaffold**: `pnpm-workspace.yaml`, root `package.json`, extend `.gitignore` (lockfile policy: committed; `.mimosa/` local state ignored), `apps/` and empty `packages/`. Commit.
-3. **First app**: `outbound-sequencer` per the template, with unit tests + `test-structure.sh`. Commit.
-4. **Second app**: `crm-hygiene`. Commit.
-5. **Skill reference**: `references/vercel-workflows.md`. Commit.
-6. **CI extension** for the Node job. Commit.
-
-Steps 1–5 are one logical release: the version bump to 0.4.0 and its CHANGELOG entry land in step 1 and cover the whole set (commits are incremental, the release is single). CI (step 6) may trail the release.
-
-Each step leaves `for t in tests/*.sh; do bash "$t"; done` green, per AGENTS.md.
+1. **Marketplace rename + docs**: catalogs → `gtm-gem`, README/CONTRIBUTING badges, clone URLs, install snippets; plugin manifests → 0.4.0 + CHANGELOG entry (steps 1–7 are this single release).
+2. **Workspace scaffold**: `pnpm-workspace.yaml`, root `package.json`, `@gtm-gem/core`, `.gitignore` (committed lockfile; ignore `.mimosa/`).
+3. **HubSpot connector** per contract, with tests.
+4. **Clay connector** per contract, with tests.
+5. **`hubspot-clay-sync`** workflow per template, with tests + `test-structure.sh`.
+6. **`crm-hygiene`** workflow.
+7. **Skill reference** `references/vercel-workflows.md` + README catalog matrix + CONTRIBUTING recipes.
+8. **CI extension** (Node job; may trail the release).
 
 ## Risks / open items
 
-- **DevKit API drift**: exact Hono wiring and cron auth details to be resolved against the bundled docs (`node_modules/workflow/docs/`) at implementation time, not from memory.
-- **Preview-environment semantics for "pilot"**: preview deployments are ephemeral; the implementation plan should verify whether a stable preview alias (or a second production project) is the better pilot target.
-- **GitHub repo path**: `nika-loki/gtm-gem` is assumed; the user must create/rename on GitHub and set the remote — flagged in the rollout as a user action.
-- **Scope guard**: if either starter app grows past ~5 workflows/steps of complexity, it gets its own follow-up spec rather than bloating this one.
+- **DevKit API drift**: exact Hono wiring and cron auth resolved against bundled docs (`node_modules/workflow/docs/`) at implementation time, not from memory.
+- **Connector API surface**: HubSpot/Clay endpoints chosen minimally per first scenarios (contacts read + table write); breadth grows per-scenario, not speculatively.
+- **Preview-environment semantics for "pilot"**: verify whether a stable preview alias or a second project is the better pilot target.
+- **GitHub repo path**: `nika-loki/gtm-gem` assumed; user creates/renames on GitHub and sets the remote.
+- **Scope guard**: any connector or workflow growing past ~5 operations/steps gets its own follow-up spec rather than bloating this one.
