@@ -1,0 +1,47 @@
+{
+  "$schema": "https://paydirt.dev/schemas/preset-v1.json",
+  "fields": [
+    {
+      "enumValues": [
+        "prospecting",
+        "qualification",
+        "proposalpricequote",
+        "negotiationreview",
+        "closedwon",
+        "closedlost"
+      ],
+      "name": "stage",
+      "type": "enum"
+    },
+    {
+      "key": true,
+      "name": "opportunity_id",
+      "type": "id"
+    },
+    {
+      "name": "account_id",
+      "type": "string"
+    },
+    {
+      "name": "amount",
+      "type": "number"
+    },
+    {
+      "name": "close_date",
+      "type": "date"
+    },
+    {
+      "name": "is_won",
+      "type": "boolean"
+    },
+    {
+      "name": "name",
+      "type": "string"
+    }
+  ],
+  "kind": "preset",
+  "slug": "salesforce.opportunity",
+  "source": "Salesforce",
+  "title": "Salesforce Opportunity",
+  "version": 1
+}

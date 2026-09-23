@@ -1,0 +1,58 @@
+{
+  "$schema": "https://paydirt.dev/schemas/preset-v1.json",
+  "fields": [
+    {
+      "enumValues": [
+        "subscriber",
+        "lead",
+        "mql",
+        "sql",
+        "opportunity",
+        "customer",
+        "evangelist",
+        "other"
+      ],
+      "name": "lifecycle_stage",
+      "type": "enum"
+    },
+    {
+      "key": true,
+      "name": "hs_object_id",
+      "type": "id"
+    },
+    {
+      "name": "company",
+      "type": "string"
+    },
+    {
+      "name": "created_at",
+      "type": "datetime"
+    },
+    {
+      "name": "email",
+      "pii": true,
+      "type": "email",
+      "unique": true
+    },
+    {
+      "name": "first_name",
+      "pii": true,
+      "type": "string"
+    },
+    {
+      "name": "last_name",
+      "pii": true,
+      "type": "string"
+    },
+    {
+      "name": "phone",
+      "pii": true,
+      "type": "phone"
+    }
+  ],
+  "kind": "preset",
+  "slug": "hubspot.contact",
+  "source": "HubSpot",
+  "title": "HubSpot Contact",
+  "version": 1
+}

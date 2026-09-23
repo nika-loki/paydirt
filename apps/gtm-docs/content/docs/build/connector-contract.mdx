@@ -1,0 +1,61 @@
+---
+title: Connector contract
+description: The MUST list every connectors/* package satisfies — typed clients, dry-run-aware writes, and budgets and action caps that are enforced, not advisory.
+---
+
+One package per external system (`hubspot`, `clay`, `salesforce`, …), named
+`@paydirt/<system>`, workspace-internal until published. A connector package
+**MUST** satisfy every item below — the [Governance](/docs/concepts/governance)
+guardrails turned into the checklist a connector PR is reviewed against,
+condensed from
+[`connectors/README.md`](https://github.com/nika-loki/paydirt/blob/main/connectors/README.md).
+
+## The MUST list
+
+- [ ] **Wrap one external system with a typed client**, constructed with a
+  `RunContext` from `@paydirt/core`. The context travels through every call —
+  it is how dry-run state, budget, and caps reach the connector.
+- [ ] **Take secrets from `process.env` only** — never logged, never CLI
+  arguments, never in thrown-error text. No code path formats a secret value
+  into a string; diagnostics accept key *names* only.
+- [ ] **Make every write dry-run-aware.** With `ctx.dryRun` true, writes
+  perform no network mutation and return `{ planned: … }`. **Reads always
+  execute** — dry-run is a guard on mutations, not on visibility.
+- [ ] **Meter billable calls** with `ctx.budget.charge(usd, reason)` and
+  **count mutations** with `ctx.countAction(reason)`.
+- [ ] **Ship offline unit tests** with a mocked `fetch`, plus a `.env.example`
+  whose values are literally `replace-me`.
+- [ ] **Declare `test` and `typecheck` scripts** — `pnpm test` at the repo root
+  runs them.
+- [ ] **Import `@paydirt/core` only.** Never from `workflows/`, never sideways
+  into another connector.
+
+<Callout type="info">
+  Reads always execute; writes are dry-run-aware; budgets and action caps are
+  enforced, not advisory.
+</Callout>
+
+## Enforced means enforced
+
+The meter is not a suggestion — `@paydirt/core` throws when a limit is hit
+(`packages/core/src/run-context.ts`):
+
+- `ctx.budget.charge(usd, reason)` throws `BudgetExhaustedError` the moment a
+  charge would push the run past `DAILY_BUDGET_USD`.
+- `ctx.countAction(reason)` throws `ActionLimitError` on the action that would
+  exceed `MAX_ACTIONS_PER_RUN`.
+- `DRY_RUN` anything-but-literal-`"false"` is a dry run; the default is dry
+  everywhere except production.
+
+The dry-run write shape, in skeleton form:
+
+```ts
+const result = ctx.dryRun
+  ? { planned: planFrom(records) }   // no network mutation
+  : await client.write(records);
+```
+
+A connector that logs a value, skips the meter on a billable call, or performs
+a network mutation in dry mode fails review — see the connector PR invariants
+in the [design spec](https://github.com/nika-loki/paydirt/blob/main/docs/superpowers/specs/2026-09-23-paydirt-monorepo-design.md)
+and [CONTRIBUTING.md](https://github.com/nika-loki/paydirt/blob/main/CONTRIBUTING.md).

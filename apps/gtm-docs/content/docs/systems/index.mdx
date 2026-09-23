@@ -1,0 +1,59 @@
+---
+title: Systems
+description: One design record per go-to-market workflow — diagram, data model, attribution touch, and governance, structured the same way every time.
+---
+
+Systems is the catalog of paydirt's go-to-market automations. Every system gets
+one page — a **design record** — written for operators first: what it does, what
+starts it, what it touches, and who signs off before it does anything risky.
+You never have to read code to answer "what does this thing actually do to our
+CRM?"
+
+Every record follows the same seven-part template, in the same order, so any
+two systems can be compared side by side:
+
+1. **Business summary** — who the system is for and what it accomplishes, in
+   operator language.
+2. **Trigger & outcome** — what starts a run, and what concretely exists when
+   it is done.
+3. **Workflow diagram** — the run end to end, including its human approval
+   gate where one exists.
+4. **Data model & field mappings** — the objects involved, which fields carry
+   personal data, and which field goes where.
+5. **Attribution touch** — which [attribution](/docs/glossary#attribution)
+   markers the system creates, updates, or merely reads.
+6. **Governance** — [blast radius](/docs/glossary#blast-radius) and its gate,
+   the environment ladder, budget caps, and
+   [dry-run](/docs/glossary#dry-run) defaults. Key names only, never values.
+7. **Build & run** — where the code lives and how it is deployed.
+
+## The catalog
+
+| Workflow                                                     | Connectors                                   | Blast radius                          | Gate                                                                 | The question it answers                                                                    |
+| ------------------------------------------------------------ | -------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [Product-usage ICP pipeline](/docs/systems/icp-pipeline)     | Clay · HubSpot                               | writes-internal                       | Approval hook before the first write batch                            | Which installed accounts earned a Q4 cross-sell touch — and what did the data pass through to say so? |
+| [HubSpot → Clay sync](/docs/systems/hubspot-clay-sync)       | HubSpot · Clay                               | writes-internal                       | Approval hook before the first write batch                            | Which contacts are ready for enrichment — and did a human say yes before anything was written? |
+| [CRM hygiene](/docs/systems/crm-hygiene)                     | HubSpot — reads only                         | read-only + demo                      | None — the trigger is owner-only; demo mode is public with zero credentials | Where are the duplicates and stale records — without changing a single thing?               |
+
+The ICP pipeline is the first **map-first** record — its board is the page,
+drawn on a canvas and embedded live, so the flow reads before the prose
+does. The board carries the workflow diagram in place of section 3; every
+other section, including the data model and attribution touch, is on the
+page. paydirt ships today at **0.4.0** (the gtm-sandbox plugin), and none of
+the three systems' code is in that release: the ICP pipeline's connectors
+and workflow stand as a design record exactly like the sync and hygiene
+records, all spec'd for paydirt **0.5.0** and landing with that rollout.
+What is live here today is the ICP pipeline's board; each page says up front
+where its code stands.
+
+## Adding a record
+
+New system, new page — same template. Author an MDX file under
+`content/docs/systems/`, build the data model as a board in the
+[studio](/studio) (paste JSON to infer fields) and copy the exported
+`<DataModel … />` MDX into section 4 — or embed the board itself with
+`<Board src="…" />`. Then add the page to `systems/meta.json` so the sidebar
+picks it up. The [boards & studio guide](/docs/build/boards-and-studio)
+covers the whole authoring path — documents, canvas, presets, validation —
+and the [workflow template](/docs/build/workflow-template) documents
+the structure a real deployment must carry.

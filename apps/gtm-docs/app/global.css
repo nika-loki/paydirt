@@ -1,0 +1,255 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+@import 'tw-animate-css';
+
+/*
+ * paydirt design system — one semantic token layer (spec D14).
+ *
+ * shadcn/ui consumes --background/--primary/--muted/--border/--ring/--radius
+ * natively through the `@theme inline` mapping below; Fumadocs consumes the
+ * same palette through the --color-fd-* alias block. Two renderers, one
+ * palette, one dark mode (`[data-theme='dark'], .dark`). Neutrals mirror the
+ * Fumadocs neutral baseline this site shipped with, and --primary carries the
+ * paydirt gold accent that used to live in the --color-fd-primary override —
+ * existing pages render identically.
+ */
+
+/* Radix data-state shorthands used by the shadcn scaffold (data-open:, …).
+ * Vendored from shadcn/tailwind.css (MIT) so the scaffold needs no runtime
+ * `shadcn` dependency. */
+@custom-variant data-open {
+  &:where([data-state='open']),
+  &:where([data-open]:not([data-open='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state='closed']),
+  &:where([data-closed]:not([data-closed='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state='checked']),
+  &:where([data-checked]:not([data-checked='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-unchecked {
+  &:where([data-state='unchecked']),
+  &:where([data-unchecked]:not([data-unchecked='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-selected {
+  &:where([data-selected='true']) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled='true']),
+  &:where([data-disabled]:not([data-disabled='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-active {
+  &:where([data-state='active']),
+  &:where([data-active]:not([data-active='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation='horizontal']) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation='vertical']) {
+    @slot;
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* `dark:` follows the app theme toggle (next-themes sets `.dark`; the
+ * data-theme attribute is honored as the second convention) instead of the
+ * OS preference. */
+@custom-variant dark (&:is(.dark *, [data-theme='dark'] *));
+
+/* --- semantic tokens (light) — oklch mirrors of the fd neutral baseline ----- */
+:root {
+  --background: oklch(0.97 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(0.959 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(0.985 0 0);
+  --popover-foreground: oklch(0.269 0 0);
+  --primary: oklch(0.62 0.13 75); /* paydirt gold */
+  --primary-foreground: oklch(0.98 0.01 95);
+  --secondary: oklch(0.947 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.971 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.86 0 0 / 0.5);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.846 0 0 / 0.5);
+  --input: oklch(0.846 0 0 / 0.7);
+  /* Focus indicators must clear 3:1 non-text contrast (WCAG 1.4.11): the old
+   * neutral oklch(0.715) measured ~1.7:1 blended on light surfaces. The paydirt
+   * gold measures 3.41:1 on --background. */
+  --ring: oklch(0.62 0.13 75);
+  --radius: 0.625rem;
+}
+
+/* --- semantic tokens (dark) -------------------------------------------------- */
+[data-theme='dark'],
+.dark {
+  --background: oklch(0.182 0 0);
+  --foreground: oklch(0.94 0 0);
+  --card: oklch(0.214 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.235 0 0);
+  --popover-foreground: oklch(0.9 0 0);
+  --primary: oklch(0.78 0.14 82); /* paydirt gold, dark */
+  --primary-foreground: oklch(0.2 0.03 75);
+  --secondary: oklch(0.248 0 0);
+  --secondary-foreground: oklch(0.94 0 0);
+  --muted: oklch(0.248 0 0);
+  --muted-foreground: oklch(0.767 0 0 / 0.8);
+  --accent: oklch(0.517 0 0 / 0.3);
+  --accent-foreground: oklch(0.926 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(0.51 0 0 / 0.2);
+  --input: oklch(0.51 0 0 / 0.35);
+  /* Near-white for ≥3:1 against every dark surface (≈11.9:1 on --card). */
+  --ring: oklch(0.85 0 0);
+}
+
+/* Tailwind utilities over the semantic tokens (bg-background, text-primary…).
+ * The default radius/font scales are intentionally left untouched so every
+ * pre-existing utility renders exactly as before. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+/* --- Fumadocs alias: --color-fd-* ← the same semantic tokens (D14) ----------- */
+:root,
+[data-theme='dark'],
+.dark {
+  --color-fd-background: var(--background);
+  --color-fd-foreground: var(--foreground);
+  --color-fd-muted: var(--muted);
+  --color-fd-muted-foreground: var(--muted-foreground);
+  --color-fd-popover: var(--popover);
+  --color-fd-popover-foreground: var(--popover-foreground);
+  --color-fd-card: var(--card);
+  --color-fd-card-foreground: var(--card-foreground);
+  --color-fd-border: var(--border);
+  --color-fd-primary: var(--primary);
+  --color-fd-primary-foreground: var(--primary-foreground);
+  --color-fd-secondary: var(--secondary);
+  --color-fd-secondary-foreground: var(--secondary-foreground);
+  --color-fd-accent: var(--accent);
+  --color-fd-accent-foreground: var(--accent-foreground);
+  --color-fd-ring: var(--ring);
+}
+
+@layer base {
+  * {
+    /* Full-opacity --ring: the old /50 alpha blended focus outlines down to
+     * ~1.65:1 (light) / ~1.9:1 (dark) — below the 3:1 non-text minimum. */
+    @apply border-border outline-ring;
+  }
+}
+
+/* --- docs prose tables --------------------------------------------------------
+ * Fumadocs' typography layer pins tables to width:100% + table-layout:auto,
+ * which squeezes wide catalogs (e.g. the 6-column systems catalog) into
+ * one-word-per-line cells. Size to content instead — the MDX Table component
+ * already wraps every table in an overflow-auto div, so wide tables scroll
+ * horizontally at their natural column widths. Unlayered on purpose: this
+ * must beat the layered `.prose` utilities. */
+article[data-layout-content] .prose table {
+  width: max-content;
+  min-width: 100%;
+}
+
+/* --- docs prev/next pager -----------------------------------------------------
+ * The Fumadocs footer slot truncates card descriptions to one line
+ * (`.truncate`), silently hiding over half the sentence with no tooltip.
+ * Clamp to two lines instead (unlayered, so it beats the layered utility). */
+article[data-layout-content] > div > a > p.truncate {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+}
+
+/* --- reduced motion -----------------------------------------------------------
+ * Vestibular safety: collapse CSS animations/transitions (tw-animate-css
+ * dialogs, pulse/spin indicators, sonner toasts) to effectively-instant.
+ * JS-driven viewport animations (React Flow fitView/setViewport) are guarded
+ * separately in the canvas components via matchMedia. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- touch targets on the canvases --------------------------------------------
+ * React Flow control buttons default to ~26×26px — under the ~40px touch
+ * minimum. Bump them on coarse pointers only; mouse users keep the compact
+ * chrome. */
+@media (pointer: coarse) {
+  .react-flow__controls-button {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Mermaid diagrams render on a transparent canvas inside docs pages */
+.mermaid-figure svg {
+  max-width: 100%;
+  height: auto;
+}

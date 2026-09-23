@@ -1,0 +1,36 @@
+---
+title: Concepts
+description: The shared vocabulary behind paydirt's governed go-to-market systems — trust model, environments, blast radius, governance, and architecture, each starting from plain language.
+---
+
+<Callout title="In plain terms">
+This section is the shared dictionary. Each page explains one idea the rest of
+the documentation depends on, and each page opens with a short summary you can
+read with no background at all — the precision comes after.
+</Callout>
+
+The [Systems](/docs/systems) section documents individual go-to-market
+systems. This section documents the *ideas those systems share*: where secrets
+live, how a run moves from safe to live, how much damage a system can do, and
+what stops it. Read these once and every design record afterward reads the
+same way.
+
+- **[Trust model](/docs/concepts/trust-model)** — secret values exist in
+  exactly two places, and most of the team never sees one. How "use without
+  seeing" works, and the three layers that sandbox an agent's access to
+  secrets.
+- **[Environments](/docs/concepts/environments)** — development, pilot, and
+  production as a ladder of credentials and
+  [blast radius](/docs/glossary#blast-radius); promotion is a dispatch
+  input, not a code change.
+- **[Blast radius](/docs/concepts/blast-radius)** — the four classes of
+  potential damage a system can do, and the [gate](/docs/glossary#gate) each
+  class must carry.
+- **[Governance](/docs/concepts/governance)** — the four guardrails inside
+  every run: [dry-run](/docs/glossary#dry-run), budget, action cap, and
+  approval before external effects.
+- **[Architecture](/docs/concepts/architecture)** — the one-way layering of
+  the codebase, and why the agent plugin imports nothing.
+
+Looking for a single word? The [Glossary](/docs/glossary) defines every term
+these pages use.

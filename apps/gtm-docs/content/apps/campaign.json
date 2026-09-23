@@ -1,0 +1,10 @@
+{
+  "$schema": "https://paydirt.dev/schemas/app-v1.json",
+  "category": "marketing",
+  "kind": "app",
+  "richProfiles": [],
+  "slug": "campaign",
+  "title": "Campaign",
+  "vendor": "Campaign",
+  "version": 1
+}

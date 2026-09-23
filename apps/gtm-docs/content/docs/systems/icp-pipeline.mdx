@@ -1,0 +1,280 @@
+---
+title: "Product-usage ICP pipeline"
+description: The flagship system map — how product-usage data flows nightly from the Snowflake warehouse through Clay scoring and HubSpot into the Q4 cross-sell campaign, readable in one glance.
+---
+
+<Callout type="info" title="Status: mapped">
+  This is the first **map-first** record: the board below is the artifact, not
+  an illustration of one. The paydirt connector code it documents lands with
+  paydirt **0.5.0**, like every other record in this catalog.
+</Callout>
+
+## Summary
+
+Every night, this pipeline looks at which companies are actually using the
+product and how much, scores them against our ideal customer profile, and
+hands the strongest to sales as ready-to-work contacts in the CRM. By
+morning, the Q4 outbound team opens a live list of installed accounts worth
+expanding — and this page shows every system the data passed through to get
+there, in the order it passed through them.
+
+<Board
+  src="icp-pipeline"
+  caption="Product usage to Q4 cross-sell — read left to right; every arrow says how the data moves, how often, and what travels."
+/>
+
+## How to read this map
+
+- **Left to right is the order data moves.** The card shapes are the grammar
+  of every board: a **source** is where data is born (the Snowflake
+  warehouse), a **processor** shapes it (the Clay table and enrichment
+  workflow), a **destination** is where it lands to be acted on (HubSpot),
+  and a **consumer** is the revenue motion that uses it (the Q4 campaign).
+- **Every arrow answers three questions.** *How* the data moves — the
+  mechanism: a scheduled API pull, an enrichment run, or a native sync
+  between two systems. *How often* — the cadence: nightly, on new row, on
+  run complete. *What travels* — the payload, in one line. Where the arrow
+  crosses a credential boundary it also carries the credential **name**
+  (`SNOWFLAKE_RO_KEY`) — a name, never a value.
+- **The cross-sell badge** on the campaign is its revenue **motion** — the
+  customer-lifecycle stage this flow serves, from the base set: new-business,
+  upsell, cross-sell, renewal, retention.
+- **The map is live, not a picture.** Drag to pan, scroll to zoom, use the
+  minimap to jump around, and click any card or arrow for its full detail.
+- Across these docs, fields carrying personal data are marked **PII** (shown
+  in amber) — the trust model made visible in the data itself.
+
+## Trigger & outcome
+
+- **Trigger** — Clay's native warehouse source performs the nightly pull from
+  the Snowflake product-analytics warehouse itself, authenticated with the
+  read-only `SNOWFLAKE_RO_KEY`: every account whose product usage changed
+  since the last run becomes a row in the Clay table *ICP signals*
+  (`domain`, `icp_score`, `usage_tier`), which fires the enrichment workflow
+  on arrival. From that pull onward the paydirt workflow owns the run — the
+  Clay enrichment, the scoring, and the planned, approval-gated writes into
+  HubSpot.
+- **Outcome** — the **Q4 outbound motion** (cross-sell) works a saved HubSpot
+  view, *Product-active ICP*: one enriched contact per active, ICP-scored
+  account, refreshed daily during Q4. Nothing reaches the view before that
+  account's enrichment run completes, and nothing is written to HubSpot
+  before a human approves the first write batch.
+
+## Data model & field mappings
+
+Three objects, two hops. Fields carrying personal data are marked **PII**
+(shown in amber) — the trust model made visible in the data itself.
+
+<DataModel
+  caption="Clay Row upserts as a HubSpot Contact, which appears in the saved view the Q4 campaign works."
+  entities={[
+    {
+      name: 'Clay Row',
+      source: 'Clay',
+      description: 'One row per account in the *ICP signals* table — the scoring stop between warehouse and CRM.',
+      fields: [
+        { name: 'clay_row_id', type: 'id', key: true },
+        {
+          name: 'domain',
+          type: 'string',
+          unique: true,
+          description: 'Account match key — the row arrives when the account\'s usage changes',
+        },
+        {
+          name: 'icp_score',
+          type: 'number',
+          description: 'Enrichment-written score — decides who sales looks at first',
+        },
+        {
+          name: 'usage_tier',
+          type: 'string',
+          description: 'Weekly-active-seats band from the nightly pull',
+        },
+        {
+          name: 'contact_name',
+          type: 'string',
+          pii: true,
+          description: 'Enriched person at the account — handed to sales',
+        },
+        {
+          name: 'contact_email',
+          type: 'email',
+          pii: true,
+          description: 'Enriched address for the contact push to HubSpot',
+        },
+        {
+          name: 'contact_title',
+          type: 'string',
+          description: 'Enriched job title — carried so reps see who they are touching',
+        },
+      ],
+    },
+    {
+      name: 'HubSpot Contact',
+      source: 'HubSpot',
+      description: 'The CRM landing spot — one enriched contact per account arrives here.',
+      fields: [
+        { name: 'hs_object_id', type: 'id', key: true },
+        {
+          name: 'email',
+          type: 'email',
+          pii: true,
+          description: 'The rep-facing identity of the enriched contact',
+        },
+        {
+          name: 'jobtitle',
+          type: 'string',
+          description: 'Carried from enrichment',
+        },
+        {
+          name: 'icp_score',
+          type: 'number',
+          description: 'Written forward from Clay — the view filters on it',
+        },
+        {
+          name: 'usage_tier',
+          type: 'string',
+          description: 'Written forward from Clay — flags rising usage',
+        },
+        {
+          name: 'lifecycle_stage',
+          type: 'enum',
+          enumValues: [
+            'subscriber',
+            'lead',
+            'MQL',
+            'SQL',
+            'opportunity',
+            'customer',
+          ],
+          description: 'Vendor lifecycle stage — HubSpot-side only, never written by this pipeline',
+        },
+      ],
+    },
+    {
+      name: 'Product-active ICP view',
+      source: 'HubSpot',
+      description: 'Saved view the Q4 campaign works — only contacts whose account is product-active and ICP-scored appear.',
+      fields: [
+        {
+          name: 'product_active',
+          type: 'boolean',
+          description: 'View criterion — account has current product usage',
+        },
+        {
+          name: 'icp_scored',
+          type: 'boolean',
+          description: 'View criterion — account carries an ICP score',
+        },
+      ],
+    },
+  ]}
+  relations={[
+    {
+      from: 'Clay Row',
+      to: 'HubSpot Contact',
+      cardinality: 'one-to-one',
+      label: 'upserts as',
+    },
+    {
+      from: 'HubSpot Contact',
+      to: 'Product-active ICP view',
+      cardinality: 'many-to-one',
+      label: 'appears in',
+    },
+  ]}
+/>
+
+<FieldMap
+  title="Snowflake usage → Clay row → HubSpot contact"
+  mappings={[
+    {
+      source: 'domain',
+      destination: 'domain',
+      note: 'Account identity — carried unchanged from warehouse to CRM',
+    },
+    {
+      source: 'weekly active seats',
+      transform: 'banded',
+      destination: 'usage_tier',
+      note: 'The nightly pull bands seat counts into the tier that flags rising usage',
+    },
+    {
+      source: 'enrichment columns',
+      destination: 'icp_score',
+      note: 'Clay writes the score that decides who sales looks at first',
+    },
+    {
+      source: 'contact_name + contact_email + contact_title',
+      transform: 'upsert keyed by account domain',
+      destination: 'HubSpot contact',
+      note: 'API push — never before a human approves the first write batch',
+    },
+    {
+      source: 'icp_score + usage_tier',
+      destination: 'view criteria (product_active, icp_scored)',
+      note: 'The pipeline writes icp_score (number) and usage_tier (enum) onto the HubSpot contact; the saved view is a filter definition comparing those properties — icp_score at or above a threshold, usage_tier marking the account active. The view criteria are filter config, not properties this pipeline writes.',
+    },
+    {
+      source: 'lifecycle_stage',
+      destination: '(not mapped)',
+      note: 'HubSpot-owned — read for context, never written by this pipeline',
+    },
+  ]}
+/>
+
+## Attribution touch
+
+This pipeline is not an attribution touch. It reads the strongest expansion
+signal there is — product usage — and writes scoring data onto contacts, but
+it creates no attribution markers of its own: no first-touch capture, no
+source tags, no campaign stamps. First-touch and lifecycle markers stay owned
+by HubSpot; the Q4 campaign gets credit for the deals it closes through
+HubSpot's own reporting, not through anything this pipeline writes. The
+definition of an attribution touch is in the
+[glossary entry on attribution](/docs/glossary#attribution).
+
+## Governance
+
+**[Blast radius](/docs/concepts/blast-radius): `writes-internal`** — this
+pipeline writes only inside the
+company's own GTM stack: a Clay table and HubSpot contacts. Nothing is ever
+sent to a customer, and the classification carries its gate — an **approval
+hook before the first write batch**. Writes are computed as a plan first;
+the run pauses at the hook, and only a resume carrying approval applies the
+batch. A rejection ends the run with the plan discarded and HubSpot
+untouched. In practice: when the run pauses, the approver receives the run
+link — the GitHub environment review or the workflow run page — showing
+exactly what the batch would write, then resumes the run with `approve=true`
+to apply it, or rejects to discard it.
+
+**Dry-run is the default.** `DRY_RUN` anything-but-the-literal-`"false"` is
+dry, so the pipeline plans its HubSpot writes and stops at the approval hook
+unless explicitly armed — and promotion stays an approved input change, not
+a code change.
+
+## Build & run
+
+- **Board** — `content/boards/icp-pipeline.board.json`. Open it in the
+  [studio](/studio) canvas to edit: drag the cards, wire the arrows, and
+  saves land as deterministic JSON back in the repo.
+- **Connectors** — `@paydirt/clay` (table writes, enrichment workflow runs)
+  and `@paydirt/hubspot` (contact writes), both constructed over an
+  `@paydirt/core` `RunContext`; they land with paydirt 0.5.0. The Snowflake
+  side is vendor-side: Clay's warehouse source performs the nightly pull
+  with a read-only key.
+- **Deploy** — the pipeline's code ships as `workflows/icp-pipeline` with
+  paydirt 0.5.0; today it exists as this design record. Deploying the docs
+  app you are reading — read-only, via the repo README's Deploy Button — is
+  covered in [Build & run](/docs/build), not repeated here.
+
+Environment keys — names only; values live with the secrets owner and every
+example value is the literal `replace-me`; no `.env*` file is ever
+committed:
+
+| Key                    | Role                                                |
+| ---------------------- | --------------------------------------------------- |
+| `SNOWFLAKE_RO_KEY`     | Read-only Snowflake credentials — the nightly pull  |
+| `CLAY_API_KEY`         | Clay table + workflow credentials — owner-held      |
+| `HUBSPOT_ACCESS_TOKEN` | HubSpot write credentials — owner-held              |
+| `DRY_RUN`              | Dry unless the literal string `false`               |

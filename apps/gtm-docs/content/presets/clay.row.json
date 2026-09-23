@@ -1,0 +1,55 @@
+{
+  "$schema": "https://paydirt.dev/schemas/preset-v1.json",
+  "fields": [
+    {
+      "key": true,
+      "name": "row_id",
+      "type": "id"
+    },
+    {
+      "name": "company_domain",
+      "type": "url"
+    },
+    {
+      "name": "created_at",
+      "type": "datetime"
+    },
+    {
+      "name": "domain",
+      "type": "string",
+      "unique": true
+    },
+    {
+      "name": "email",
+      "pii": true,
+      "type": "email"
+    },
+    {
+      "name": "enriched",
+      "type": "boolean"
+    },
+    {
+      "name": "first_name",
+      "pii": true,
+      "type": "string"
+    },
+    {
+      "name": "icp_score",
+      "type": "number"
+    },
+    {
+      "name": "last_name",
+      "pii": true,
+      "type": "string"
+    },
+    {
+      "name": "title",
+      "type": "string"
+    }
+  ],
+  "kind": "preset",
+  "slug": "clay.row",
+  "source": "Clay",
+  "title": "Clay Row",
+  "version": 1
+}

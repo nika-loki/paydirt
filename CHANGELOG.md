@@ -11,6 +11,8 @@ All notable changes to GTM Sandbox are documented here. Format follows [Keep a C
 - Structure test gate: catalog naming + version lockstep + no tracked `.env*` + connector/workflow package checklists enforcement + layering checks.
 - CI: Node 22 unit-test + typecheck job (pnpm, frozen lockfile) alongside the bash matrix.
 - Agent entry docs (`AGENTS.md`/`CLAUDE.md`) rewritten for the workspace; `connectors/README.md` and `workflows/README.md` package contracts.
+- gtm-docs app (`apps/gtm-docs`): Fumadocs-based GTM documentation app — DataModel ER kit with PII flags, `/model` composer, systems design records, EnvStepper + AttributionExplorer, serializer unit tests, CI docs job, plan document.
+- GTM System Map Phase 1: board engine with flow+model kits on React Flow; JSON document model with zod build validation; DocumentStore filesystem adapter; `/studio` local-first editor with paste-to-model, preset+app registries, vocabularies; flagship `icp-pipeline` board + executive systems page; deploy button + guided deploy script; shared semantic token layer + shadcn studio chrome.
 
 ## [0.4.0] — 2026-09-23
 

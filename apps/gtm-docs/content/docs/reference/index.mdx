@@ -1,0 +1,55 @@
+---
+title: Reference
+description: Pointers into the repo — the design spec section by section, the security reporting rules, and the changelog.
+---
+
+The lookup shelf: these pages don't restate the repo's long-form documents —
+they point you at them and tell you what you'll find.
+
+## Design spec
+
+The full design lives in
+[`docs/superpowers/specs/2026-09-23-paydirt-monorepo-design.md`](https://github.com/nika-loki/paydirt/blob/main/docs/superpowers/specs/2026-09-23-paydirt-monorepo-design.md)
+in the repo. What each section covers:
+
+| Section | One line |
+| --- | --- |
+| Positioning | paydirt owns the emerging "GTM engineering" discipline — the operating model (environments, promotion, gates, budgets) is the product; connectors are substrate. |
+| Goal | The three doors, by audience size: install the plugin (zero code), deploy a workflow, reuse a connector. |
+| Non-goals | Not replacing GitHub Actions; no npm publishing of connectors yet; no automated Vercel secrets sync; no turborepo, CLIs, or dashboards. |
+| Key assumptions | First connectors HubSpot then Clay (Salesforce third); first workflows `hubspot-clay-sync` and `crm-hygiene`; Hono shell, pnpm, Node 22; 0.4.0 rename, 0.5.0 workspace. |
+| Repo layout | The target tree and the one-way layering rule: `workflows → connectors → @paydirt/core`; plugins import nothing. |
+| The connector contract | Typed clients, dry-run-aware writes, budget metering, redact-by-construction. |
+| @paydirt/core | `RunContext` and the dry-run rule, budget meter, and action caps shared by every connector and workflow. |
+| Workflow app template | Vercel-first runtime, the protected trigger route, the blast-radius taxonomy, environment mapping, and the human gate. |
+| Demo visibility | The public `crm-hygiene` demo (`SAMPLE_DATA=true`, zero credentials) as the on-ramp for viewers. |
+| First scenarios | `hubspot-clay-sync` (`writes-internal`) and `crm-hygiene` (`read-only` + `demo` mode). |
+| Plugin integration | The skill reference that maps conventions across GitHub Actions and Vercel workflow runtimes. |
+| Open-source contribution story | README as catalog, CONTRIBUTING recipes for connectors and workflows, connector PR invariants. |
+| Testing | Offline bash suites, the structure gate, and per-package vitest with mocked `fetch`. |
+| Rollout | The eight ordered steps, each keeping the offline test suites green. |
+| Risks / open items | DevKit API drift, connector API surface, preview-environment semantics, name noise, demo abuse surface, scope guard. |
+
+## Security reporting
+
+From [`SECURITY.md`](https://github.com/nika-loki/paydirt/blob/main/SECURITY.md):
+
+- **Use GitHub's private vulnerability reporting** (Security → Report a
+  vulnerability) — never a public issue for anything security-related.
+- Include what you expected vs. what happened, the minimal `.env.*` shape using
+  `KEY=redacted` (**never paste real values into a report**), and logs with any
+  values redacted. Expect a response within a few days.
+- **In scope**: any path where a secret value could reach stdout/stderr, git,
+  CI logs, or agent context; the pre-commit guard failing to block `.env*`
+  staging; unvalidated input in the sync script or installer; marketplace or
+  manifest trickery in this repository.
+- **Out of scope**: GitHub's own secret storage; values already exposed by user
+  action elsewhere (rotate them with the vendor); social-engineering an owner
+  into pasting a value into chat.
+
+## Changelog
+
+[`CHANGELOG.md`](https://github.com/nika-loki/paydirt/blob/main/CHANGELOG.md)
+follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with semantic
+versioning — every notable change to the plugin, workspace, connectors, and
+workflows is recorded there, newest first.

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://paydirt.dev/schemas/app-v1.json",
+  "category": "sales",
+  "domain": "salesforce.com",
+  "kind": "app",
+  "richProfiles": [],
+  "slug": "salesforce",
+  "title": "Salesforce",
+  "vendor": "Salesforce",
+  "version": 1
+}

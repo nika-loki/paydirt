@@ -1,0 +1,13 @@
+{
+  "$schema": "https://paydirt.dev/schemas/app-v1.json",
+  "category": "data",
+  "domain": "snowflake.com",
+  "kind": "app",
+  "richProfiles": [
+    "warehouse"
+  ],
+  "slug": "snowflake",
+  "title": "Snowflake",
+  "vendor": "Snowflake",
+  "version": 1
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://paydirt.dev/schemas/vocab-v1.json",
+  "kind": "vocab",
+  "slug": "mechanisms",
+  "title": "Mechanisms",
+  "values": [
+    "api-pull",
+    "webhook",
+    "enrichment-run",
+    "native-sync",
+    "manual-export"
+  ],
+  "version": 1
+}

@@ -1,0 +1,73 @@
+---
+title: Promotion
+description: development → pilot → production — promotion changes which environment runs the code, never the code itself, and every hop adds a human gate.
+---
+
+One codebase, three GitHub environments. **Promotion changes *which environment
+runs the code*, never the code itself.** Each hop adds a human gate and
+increases blast radius.
+
+This page is the condensed operating summary. The concept behind the ladder —
+what an [environment](/docs/glossary#environment) is and why promotion never
+touches code — is covered in [Environments](/docs/concepts/environments).
+Environment gating details, reviewer setup, and rollback procedure live in
+[`plugins/gtm-sandbox/skills/gtm-sandbox/references/promotion.md`](https://github.com/nika-loki/paydirt/blob/main/plugins/gtm-sandbox/skills/gtm-sandbox/references/promotion.md)
+in the repo.
+
+## Environment configuration (one-time, per repo)
+
+For each of `development`, `pilot`, `production` (Repo → Settings →
+Environments):
+
+| Environment | Required reviewers | Deployment branches / tags | Notes |
+| --- | --- | --- | --- |
+| development | none | all branches | Free-for-all; scratch credentials |
+| pilot | 1+ trusted operator(s) | `main` only | First hop with real credentials |
+| production | 2+ (or on-call rotation) | `main` or `v*` tags | Real audience; dry-run off |
+
+## The workflow contract
+
+The template (`assets/workflows/gtm-workflow.yml` in the skill) expects exactly:
+
+- A `workflow_dispatch` input `environment` (choice: development / pilot /
+  production) and a boolean `dry_run` override.
+- The job declares `environment: ${{ inputs.environment || 'development' }}`, so
+  GitHub injects the right secrets and enforces that environment's reviewers.
+- The app receives `GTM_ENVIRONMENT` and treats any `DRY_RUN` other than the
+  literal `false` as a dry run. When the dispatch input is empty (scheduled
+  runs), the app derives the default per environment: **dry for development and
+  pilot, live for production**.
+
+## Promote
+
+1. Verify behavior in `development` — scheduled or dispatched, failures are
+   cheap there.
+2. Dispatch with `environment: pilot` → a required reviewer approves → dry-run
+   against real credentials.
+3. Dispatch with `environment: production` (and `dry_run: false` only if the
+   default needs overriding) → two reviewers approve → live.
+
+```bash
+gh workflow run gtm-workflow.yml -f environment=pilot -f dry_run=true
+gh run watch
+```
+
+## Rollback
+
+- **Immediate**: re-dispatch the previous environment configuration
+  (`environment: pilot`) — no code rollback needed, because production runs the
+  same commit.
+- **Credential rollback**: restore the old value in `.env.production` locally,
+  re-sync, re-dispatch.
+- **Emergency stop**: `gh workflow disable gtm-workflow.yml`, rotate affected
+  credentials from the vendor dashboard, then re-sync.
+
+## Anti-patterns
+
+- **Branch-per-environment** (`dev`/`pilot`/`main`) — environments drift into
+  different *code*; see [Environments](/docs/concepts/environments) for why
+  this fails.
+- **Copying `.env.pilot` values into `.env.production`** "temporarily" —
+  production gets production-scoped credentials or nothing.
+- **Bypassing reviewers for a "quick" production run** — that is what pilot is
+  for.

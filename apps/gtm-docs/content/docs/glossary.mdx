@@ -1,0 +1,205 @@
+---
+title: Glossary
+description: Plain definitions of the vocabulary this documentation uses — attribution, blast radius, dry-run, environments, gates, and the rest — with cross-links between related terms.
+---
+
+The vocabulary paydirt's documentation uses, alphabetically. Related terms
+link to each other; the [Concepts](/docs/concepts) section covers the big
+ideas in depth.
+
+### Attribution
+
+The practice of tracking which marketing and sales touches contributed to a
+deal. In a design record, attribution is documented as **attribution
+touches**: which system creates, updates, or reads which attribution marker —
+a first-touch URL, for example — at which funnel stage. Related:
+[CRM](#crm), [workflow](#workflow).
+
+### Blast radius
+
+The most damage a system can do if it misbehaves. Declared up front as one of
+four classes — `demo`, `read-only`, `writes-internal`, `sends-external` — and
+the class determines the [gate](#gate). See
+[Blast radius](/docs/concepts/blast-radius). Related:
+[environment](#environment), [dry-run](#dry-run).
+
+### Board (system map)
+
+The canvas artifact at the heart of a map-first
+[design record](#design-record): cards for systems, arrows that say how data
+moves, how often, and what travels. A board is a JSON document under
+`content/boards/`, drawn and edited in the [studio](/studio) — see
+[Boards & studio](/docs/build/boards-and-studio). Related:
+[workflow](#workflow), [studio](#studio), [environment](#environment).
+
+### Budget meter
+
+The mechanism that meters billable calls in a run: each billable action is
+charged with an amount and a reason, and the run stops with an explicit error
+when the next charge would cross the `DAILY_BUDGET_USD` ceiling (enforced
+per run today). A property of the [RunContext](#runcontext). See
+[Governance](/docs/concepts/governance). Related: [dry-run](#dry-run).
+
+### Clay
+
+A data enrichment and automation tool go-to-market teams use to research and
+enrich records — the destination table in the HubSpot → Clay sync scenario.
+One of paydirt's first two [connectors](#connector). Related:
+[enrichment](#enrichment), [CRM](#crm).
+
+### Connector
+
+A typed client package wrapping exactly one external system, constructed with
+a [RunContext](#runcontext): dry-run-aware writes, metered billable calls, and
+secrets read from the process environment by name only. See
+[Architecture](/docs/concepts/architecture). Related: [workflow](#workflow),
+[CRM](#crm), [Clay](#clay).
+
+### CRM
+
+A customer relationship management system — the record of companies,
+contacts, and deals. HubSpot is the first CRM paydirt connects, and
+Salesforce follows; Clay — an enrichment tool, not a CRM — is the other
+first connector. Related: [connector](#connector),
+[dedupe](#dedupe), [lead routing](#lead-routing).
+
+### Cron
+
+A clock that starts a run on a schedule — the nightly fire behind a
+[workflow](#workflow)'s protected trigger route, for example. Related:
+[workflow](#workflow), [replay](#replay).
+
+### Dedupe
+
+Removing duplicate records — two rows for the same person or company. The
+weekly `crm-hygiene` scan exists to find duplicates and stale records.
+Related: [CRM](#crm), [enrichment](#enrichment).
+
+### Design record
+
+One page per GTM system in the [Systems](/docs/systems) catalog: business
+summary, trigger & outcome, workflow diagram, data model & field mappings,
+[attribution](#attribution) touch, governance, and build & run — the same
+seven parts in the same order, so any two systems can be compared side by
+side. Related: [board](#board-system-map), [blast radius](#blast-radius).
+
+### Dry-run
+
+A rehearsal mode: the run reads real data, plans its changes, and modifies
+nothing. Controlled by `DRY_RUN`, where anything other than the literal
+string `false` means dry, and the default is dry except in production. See
+[Governance](/docs/concepts/governance). Related: [gate](#gate),
+[budget meter](#budget-meter), [environment](#environment).
+
+### Enrichment
+
+Adding data to records from external sources — firmographics, contact
+details, technographics — typically before routing or sequencing. Related:
+[Clay](#clay), [connector](#connector), [ICP](#icp).
+
+### Environment
+
+A named stage — `development`, `pilot`, or `production` — that carries
+credentials, [blast radius](#blast-radius), and a [gate](#gate) all at once.
+Promotion between environments is a dispatch-input change plus a human
+approval, never a code change. Not to be confused with an *environment
+variable*, which is a single configuration value (`DRY_RUN`, for example).
+See [Environments](/docs/concepts/environments). Related: [pilot](#pilot),
+[gate](#gate).
+
+### Gate
+
+A human checkpoint a run must pass: required reviewers on a GitHub
+environment, or an approval hook inside a workflow app. Which gate applies is
+determined by the declared [blast radius](#blast-radius). See
+[Blast radius](/docs/concepts/blast-radius). Related:
+[environment](#environment), [dry-run](#dry-run).
+
+### ICP
+
+Ideal customer profile — the description of the accounts a team pursues best.
+Enrichment adds the signals that score against it; routing acts on the score.
+Related: [enrichment](#enrichment), [lead routing](#lead-routing).
+
+### Lead routing
+
+The rules that decide which owner or queue an inbound lead goes to, usually
+scored against the [ICP](#icp) using enriched attributes. Related:
+[CRM](#crm), [enrichment](#enrichment).
+
+### Pilot
+
+The middle [environment](#environment): real but narrow credentials, a small
+audience, dry-run by default, one required reviewer. The first hop where
+automation touches real data — safely. Related: [dry-run](#dry-run),
+[gate](#gate).
+
+### PII
+
+Personally identifiable information — any data that identifies a person
+(names, email addresses, phone numbers). Design records flag data-model
+fields that carry PII so a reader can see where personal data flows; sample
+values never appear in documentation. See the
+[trust model](/docs/concepts/trust-model). Related: [CRM](#crm),
+[attribution](#attribution).
+
+### Promotion
+
+Moving a system up the [environment](#environment) ladder — development to
+pilot to production — by changing the dispatch input and passing the human
+[gate](#gate). Promotion between environments is a dispatch-input change
+plus a human approval, never a code change. See
+[Environments](/docs/concepts/environments). Related: [pilot](#pilot),
+[gate](#gate).
+
+### Replay
+
+Running the same trigger again. A well-built run updates what it created
+instead of duplicating it — sync rows are keyed by the vendor record id, so
+a replay lands as an update. Related: [cron](#cron),
+[dry-run](#dry-run).
+
+### Revenue motion
+
+The customer-lifecycle stage a flow serves, from the base set: new-business,
+upsell, cross-sell, renewal, retention. Boards badge their consumer card
+with the motion. Related: [board](#board-system-map), [ICP](#icp).
+
+### RunContext
+
+The `@paydirt/core` object every connector is constructed with: it carries
+the environment, the resolved dry-run flag, the [budget meter](#budget-meter),
+and the action counter — all four [governance](/docs/concepts/governance)
+guardrails in one place. Related: [connector](#connector),
+[dry-run](#dry-run), [workflow](#workflow).
+
+### Sandbox
+
+The isolated workspace a team gets from `/sandbox-init`: one repo, three
+[environments](#environment), and the owner-holds-every-credential split —
+see the [trust model](/docs/concepts/trust-model). "Vendor sandbox keys"
+(the `development` grade) borrow the name: low-impact test credentials
+issued by the vendor. Related: [environment](#environment),
+[pilot](#pilot).
+
+### Studio
+
+The local-first board editor at [/studio](/studio) — where boards and
+system records are authored, reviewed as JSON, and exported. See
+[Boards & studio](/docs/build/boards-and-studio). Related:
+[board](#board-system-map), [design record](#design-record).
+
+### Workflow
+
+A deployable go-to-market scenario app (`hubspot-clay-sync`, for example):
+orchestration code, one protected trigger route authenticated by
+`CRON_SECRET`, and a declared [blast radius](#blast-radius) with its matching
+[gate](#gate). Related: [connector](#connector),
+[environment](#environment), [Workflow DevKit](#workflow-devkit).
+
+### Workflow DevKit
+
+Vercel's durable-workflow runtime: `use workflow` / `use step` functions,
+durable execution, and the approval hook a gated run pauses at until a
+human resumes it. See the [workflow template](/docs/build/workflow-template).
+Related: [workflow](#workflow), [gate](#gate).

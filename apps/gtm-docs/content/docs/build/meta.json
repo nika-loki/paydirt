@@ -1,0 +1,15 @@
+{
+  "title": "Build & run",
+  "pages": [
+    "index",
+    "install",
+    "quickstart",
+    "secrets",
+    "promotion",
+    "team-access",
+    "connector-contract",
+    "workflow-template",
+    "deployment",
+    "boards-and-studio"
+  ]
+}

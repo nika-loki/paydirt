@@ -1,0 +1,54 @@
+---
+title: Build & run
+description: The engineer's door into paydirt — install the plugin, bootstrap a sandbox, and ship governed workflow and connector packages.
+---
+
+**Build & run** is written for GTM engineers: the people who install the plugin,
+wire the credentials, write the connectors, and deploy the scenarios.
+
+paydirt reaches you through **three doors**, ordered by how much code you want
+to write:
+
+1. **Install the plugin** — zero code, the differentiator. Your agent sets up,
+   deploys, and operates the whole sandbox model: environments, secrets sync,
+   promotion gates, team access.
+2. **Deploy a workflow** — pick a scenario package under `workflows/`, wire
+   credentials, and deploy it (Vercel-first) as a self-contained app.
+3. **Reuse a connector** — typed, dry-run-aware client packages
+   (`@paydirt/hubspot`, `@paydirt/clay`, …) for composing your own scenarios.
+
+<Callout type="info">
+  The layering rule is one-way: <code>workflows → connectors → @paydirt/core</code>.
+  Nothing imports from <code>workflows/</code>, connectors never import each other, and
+  the plugin imports no TypeScript at all — it is markdown and bash only.
+</Callout>
+
+## The pages
+
+| Page | What it covers |
+| --- | --- |
+| [Install](/docs/build/install) | Per-tool installation: Claude Code and ZCode plugin marketplaces, or `./install.sh` for Codex, Cursor, Gemini CLI, and any other Agent-Skills-compatible tool. |
+| [Quickstart](/docs/build/quickstart) | The owner → developer walkthrough: `/sandbox-init`, then `/sandbox-join`, ending with exactly what a developer can and cannot do. |
+| [Secrets](/docs/build/secrets) | The secrets lifecycle: local `.env.*` files, names-only sync to GitHub environment secrets, rotation, pruning. |
+| [Promotion](/docs/build/promotion) | development → pilot → production: environment gates, the workflow dispatch contract, rollback, anti-patterns. |
+| [Team access](/docs/build/team-access) | The owner / reviewer / developer split — sharing permission to *use* secrets without ever sharing the secrets. |
+| [Connector contract](/docs/build/connector-contract) | The MUST list every `connectors/*` package satisfies: dry-run-aware writes, enforced budgets and action caps, offline tests. |
+| [Workflow template](/docs/build/workflow-template) | The MUST list every `workflows/*` package satisfies: `use workflow` / `use step` split, the protected trigger route, blast-radius declaration. |
+| [Deploy your own](/docs/build/deployment) | The Vercel-first recipes: the gtm-docs app via deploy button or guided script, workflow apps with environment wiring and `SAMPLE_DATA` demo mode. |
+| [Boards & studio](/docs/build/boards-and-studio) | Authoring on the studio canvas: the JSON document model under `content/`, paste-to-model, presets and vocab, copy-as-MDX export, the build-validation gate. |
+
+## Where the code lives
+
+- `plugins/gtm-sandbox/skills/gtm-sandbox/` — the plugin's single source of
+  truth (skill, references, scripts, assets). Both tool manifests share it.
+- `packages/core/` — `@paydirt/core`: `RunContext`, the dry-run guard, the
+  budget meter, the action cap. Every connector and workflow consumes it.
+- `connectors/` — one typed client per external system.
+- `workflows/` — one deployable scenario app per package.
+
+## Verify before every commit
+
+```bash
+pnpm test        # bash suites + all package unit tests — the full gate
+pnpm typecheck   # all TS packages
+```

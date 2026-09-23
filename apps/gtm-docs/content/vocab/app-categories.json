@@ -1,0 +1,16 @@
+{
+  "$schema": "https://paydirt.dev/schemas/vocab-v1.json",
+  "kind": "vocab",
+  "slug": "app-categories",
+  "title": "App categories",
+  "values": [
+    "marketing",
+    "sales",
+    "support",
+    "success",
+    "data",
+    "enrichment",
+    "ops"
+  ],
+  "version": 1
+}

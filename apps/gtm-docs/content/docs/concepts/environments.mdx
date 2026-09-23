@@ -1,0 +1,90 @@
+---
+title: Environments
+description: Development, pilot, and production are credential and blast-radius stages — promotion between them is a dispatch input change plus a human approval, never a code change.
+---
+
+<Callout title="In plain terms">
+A go-to-market system runs in one of three settings — development, pilot,
+production — that differ by which credentials they hold and how much approval
+they require. Moving a system up is called promotion, and promotion never
+touches the code.
+</Callout>
+
+An [environment](/docs/glossary#environment), in the go-to-market sense, is
+not a server and not a config file — it is a named stage that carries three
+things at once: a set of credentials, a [blast radius](/docs/glossary#blast-radius),
+and a human [gate](/docs/glossary#gate). One codebase serves all three; the
+environment — not the branch — decides what a run can touch.
+
+| Environment | Secrets file | Blast radius | Gate |
+| --- | --- | --- | --- |
+| development | `.env.development` | Vendor sandbox keys, fake data | none |
+| pilot | `.env.pilot` | Real credentials, small audience, dry-run default | 1 required reviewer, `main` |
+| production | `.env.production` | Real everything, live runs | 2 required reviewers, `main`/`v*` |
+
+(The file column lists **names only** — values are nobody's business but the
+owner's. See the [trust model](/docs/concepts/trust-model).)
+
+<EnvStepper
+  steps={[
+    { name: 'development', summary: 'Vendor sandbox keys, fake data', secretsNote: '.env.development', gate: 'none' },
+    { name: 'pilot', summary: 'Real credentials, small audience, dry-run default', secretsNote: '.env.pilot', gate: '1 required reviewer, main' },
+    { name: 'production', summary: 'Real everything, live runs', secretsNote: '.env.production', gate: '2 required reviewers, main/v*' },
+  ]}
+  caption="The environment ladder: each hop upgrades credentials and tightens the human gate."
+/>
+
+## What each stage holds
+
+The credential grade climbs with the stage:
+
+- **development** — vendor sandbox or test-mode keys and fake data. A
+  free-for-all: any collaborator can dispatch, all branches allowed. Break
+  things here.
+- **pilot** — real but narrow: a single workspace, one rate-limited sender
+  domain, one CRM instance. Runs default to [dry-run](/docs/glossary#dry-run),
+  so even real credentials cannot spend money without an explicit override.
+- **production** — real and full, but rotated and reviewer-gated. Dry-run is
+  off by default; two humans stand between a dispatch and a live run.
+
+If a credential cannot be scoped down for pilot, that is a signal the vendor's
+model does not fit the workflow — flag it rather than running pilot with
+production keys.
+
+For deployable workflow apps, the ladder also maps to deployment targets:
+development runs locally (`pnpm dev`), pilot runs on a preview deployment with
+manual triggers, production runs on the production deployment on a cron
+schedule.
+
+## Promotion is an input, not a change
+
+Promotion — moving behavior from development to pilot to production — changes
+*which environment runs the code*, never the code itself: verify behavior in
+**development**, dispatch with `environment: pilot` for a reviewer-approved
+dry run against real credentials, then `environment: production` for the
+two-reviewer hop to live. The exact dispatch inputs and commands are in the
+[Promotion guide](/docs/build/promotion); this page covers the model.
+
+The dispatch input selects the environment; GitHub injects that environment's
+secrets and enforces its reviewers. Nothing is edited, branched, or copied.
+Rollback is the same move in reverse — re-dispatch the previous environment.
+Pilot and production run the same commit, so there is no code rollback to
+perform; a credential rollback means restoring the old value locally and
+re-syncing, which only the owner can do.
+
+Two anti-patterns this design exists to prevent:
+
+- **Branch-per-environment** (`dev` / `pilot` / `main`) — environments become
+  different *code* instead of different credentials, and they drift
+  immediately. Keep branches for code review; keep environments for secrets
+  and gates.
+- **Copying `.env.pilot` values into `.env.production`** "temporarily" —
+  production should get production-scoped credentials, not borrowed pilot
+  ones. Per the [trust model](/docs/concepts/trust-model) the only person who
+  *could* do this is the owner, which makes it an owner discipline rather than
+  a policy for the team.
+
+Key terms: [environment](/docs/glossary#environment),
+[pilot](/docs/glossary#pilot), [gate](/docs/glossary#gate),
+[blast radius](/docs/glossary#blast-radius),
+[dry-run](/docs/glossary#dry-run).

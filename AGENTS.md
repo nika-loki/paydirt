@@ -8,6 +8,7 @@
 - `packages/core/` — `@paydirt/core`: `RunContext` (dry-run guard, budget meter, action cap). Every connector and workflow consumes it.
 - `connectors/*/` — one typed client per external system; dry-run-aware writes; see `connectors/README.md` contract.
 - `workflows/*/` — deployable scenario apps; see `workflows/README.md` template.
+- `apps/gtm-docs/` — the gtm-docs app (Fumadocs/Next docs + board engine + `/studio` editor over JSON documents in `content/`; board/app/preset/vocab documents are build-validated); consumes nothing from the TS layering, ships its own tsconfig.
 - `tests/*.sh` — offline bash gates (mock `gh`, fake `$HOME`) + structure checks.
 
 ## Hard rules

@@ -1,0 +1,9 @@
+{
+  "title": "Systems",
+  "pages": [
+    "index",
+    "icp-pipeline",
+    "hubspot-clay-sync",
+    "crm-hygiene"
+  ]
+}

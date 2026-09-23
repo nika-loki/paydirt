@@ -1,0 +1,79 @@
+---
+title: Install
+description: Install the gtm-sandbox skill into Claude Code, ZCode, Codex, Cursor, Gemini CLI, or any Agent-Skills-compatible tool.
+---
+
+The skill follows the open [Agent Skills](https://agentskills.io) format — one
+`SKILL.md` works everywhere. What differs per tool is the discovery path, and
+whether you also get the **slash commands** (`/sandbox-init`, `/sandbox-join`,
+`/secrets-sync`), which ship only with plugin installs in tools that support
+plugins (Claude Code, ZCode). Everywhere else, `SKILL.md` documents the manual
+equivalent of each command.
+
+First, clone the repo:
+
+```bash
+git clone https://github.com/nika-loki/paydirt.git
+cd paydirt
+```
+
+<Tabs items={['Claude Code', 'ZCode', 'Codex / Cursor / Gemini', 'Any other tool']}>
+  <Tab value="Claude Code">
+
+  Plugin marketplace — you get the skill **and** the slash commands:
+
+  ```bash
+  /plugin marketplace add nika-loki/paydirt
+  /plugin install gtm-sandbox@paydirt
+  ```
+
+  </Tab>
+  <Tab value="ZCode">
+
+  Plugin Marketplace → **Add** → paste this repo's `plugins/` directory, then
+  install **GTM Sandbox**. You get the skill and the same slash commands as
+  Claude Code.
+
+  </Tab>
+  <Tab value="Codex / Cursor / Gemini">
+
+  Install for a specific tool by name (slash commands are not available on this
+  path — use the skill's manual equivalents):
+
+  ```bash
+  ./install.sh --tool codex
+  ./install.sh --tool cursor
+  ./install.sh --tool gemini
+  ```
+
+  </Tab>
+  <Tab value="Any other tool">
+
+  Auto-detect every installed agent and install for all of them:
+
+  ```bash
+  ./install.sh            # auto-detects installed agents
+  ./install.sh --list     # show every known tool and its skills directory
+  ./install.sh --remove   # uninstall
+  ```
+
+  Known tools: `agents`, `claude`, `codex`, `zcode`, `cursor`, `gemini`. Without
+  `--tool` or `--all`, the installer targets every detected tool and always
+  includes the cross-tool default `~/.agents/skills`; `--all` installs for every
+  known tool, detected or not.
+
+  </Tab>
+</Tabs>
+
+## What lands where
+
+The installer copies the skill from `plugins/gtm-sandbox/skills/gtm-sandbox/`
+into each tool's skills directory (for example `~/.codex/skills` for Codex).
+Marketplace installs additionally provide the commands from
+`plugins/gtm-sandbox/commands/`.
+
+<Callout type="warn">
+  Nothing in this repo ever needs a credential to install. If an install path
+  asks you for secrets, that is not this repo's installer — stop and report it
+  per <code>SECURITY.md</code>.
+</Callout>

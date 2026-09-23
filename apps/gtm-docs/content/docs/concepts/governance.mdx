@@ -1,0 +1,103 @@
+---
+title: Governance
+description: Every paydirt run carries four enforced guardrails — dry-run mode, a spending budget, an action cap, and a human approval before anything leaves your systems.
+---
+
+<Callout title="In plain terms">
+Automated go-to-market work is governed by four guardrails, and they are
+enforced by the software, not by anyone remembering to be careful: a rehearsal
+mode, a spending limit, a volume limit, and a human sign-off before anything
+leaves the building.
+</Callout>
+
+These four guardrails live in every run of every
+[workflow](/docs/glossary#workflow), in every
+[environment](/docs/glossary#environment). They are what makes it safe to
+hand go-to-market operations to automation — and to agents.
+
+## 1. Dry-run: the dress rehearsal
+
+A [dry-run](/docs/glossary#dry-run) is a full run that performs no writes.
+The system reads everything it would read, plans everything it would change,
+and reports the plan — nothing is actually modified.
+
+The switch is the `DRY_RUN` environment variable, and its rule is deliberately
+strict, in two parts:
+
+- When `DRY_RUN` is set to anything at all, **anything other than the literal
+  string `false` means dry.** A typo like `flase` rehearses instead of going
+  live — the failure mode is boring, which is the point.
+- When `DRY_RUN` is not set, the environment default applies: dry in
+  development and [pilot](/docs/glossary#pilot), live in production. Turning
+  writes on requires crossing both the environment ladder and the switch.
+
+In dry mode, a write returns its plan — `{ planned: ... }`, "here is what I
+would have changed" — instead of performing it. Reads always execute; a
+rehearsal with no data is worthless.
+
+## 2. The budget meter: a spending limit
+
+Billable calls — enrichment lookups, metered API purchases — are charged to
+the run's [budget meter](/docs/glossary#budget-meter): each billable action
+records an amount and a reason, and when the next charge would cross the
+`DAILY_BUDGET_USD` ceiling, the run stops with an explicit budget error. A
+runaway loop hits your own wall before it hits your vendor's fraud alert.
+
+One honest caveat: today the ceiling is enforced **per run** — the name says
+daily, the enforcement says this run. Cross-run aggregation is future work;
+set the per-run cap accordingly.
+
+## 3. The action cap: a volume limit
+
+Independent of money, every mutating action is counted, and a run stops hard
+at `MAX_ACTIONS_PER_RUN`. A logic error that duplicates records gets cut off
+after a bounded number of writes, not after someone notices tomorrow.
+
+## 4. The approval gate: a human sign-off
+
+For systems whose [blast radius](/docs/glossary#blast-radius) includes writes
+or sends, an approval hook stands before the first external effect:
+
+<Steps>
+  <Step>**Plan** — the run computes its planned writes dry. Nothing is
+  mutated yet.</Step>
+  <Step>**Pause** — the run stops at an approval hook and a human reviews the
+  plan.</Step>
+  <Step>**Apply or discard** — approved, the write steps execute (the
+  `DRY_RUN` switch is still respected); rejected, the run ends and the plan is
+  discarded.</Step>
+</Steps>
+
+The human sees exactly what the system intends to do, and nothing happens
+without that signature. Which operations require this gate is decided by the
+declared blast radius — see [Blast radius](/docs/concepts/blast-radius).
+
+## For engineers: where these live
+
+All four guardrails are properties of one object — the
+[RunContext](/docs/glossary#runcontext) from `@paydirt/core`. It is
+constructed once at run start from the environment, and every connector is
+constructed with one:
+
+- `ctx.dryRun` — the resolved dry-run flag. Every write path checks it first
+  and returns `{ planned: ... }` when set; reads always execute.
+- `ctx.budget.charge(usd, reason)` — meters billable calls; throws a
+  `BudgetExhaustedError` when the next charge would exceed the cap.
+- `ctx.countAction(reason)` — counts mutations; throws an `ActionLimitError`
+  past the cap.
+
+Because the context comes from the environment rather than from code, the
+guardrails travel with the run — a connector cannot opt out, and a workflow
+cannot forget to enable them. The variable *names* (`DRY_RUN`,
+`GTM_ENVIRONMENT`, `MAX_ACTIONS_PER_RUN`, `DAILY_BUDGET_USD`) are part of the
+public contract; the *values* are per-deployment and, per the
+[trust model](/docs/concepts/trust-model), only ever set by the environment
+owner.
+
+For the checklist form these guardrails take in code review, see the
+[connector contract](/docs/build/connector-contract) — the concept page is
+here; the MUST list is there.
+
+Key terms for this page: [dry-run](/docs/glossary#dry-run),
+[budget meter](/docs/glossary#budget-meter),
+[gate](/docs/glossary#gate), [RunContext](/docs/glossary#runcontext).

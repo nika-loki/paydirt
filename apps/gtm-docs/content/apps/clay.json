@@ -1,0 +1,14 @@
+{
+  "$schema": "https://paydirt.dev/schemas/app-v1.json",
+  "category": "enrichment",
+  "domain": "clay.com",
+  "kind": "app",
+  "richProfiles": [
+    "clay-table",
+    "clay-workflow"
+  ],
+  "slug": "clay",
+  "title": "Clay",
+  "vendor": "Clay",
+  "version": 1
+}

@@ -1,0 +1,105 @@
+---
+title: Trust model
+description: Secret values live in exactly two places — the owner's local .env files and GitHub's encrypted environments — and everyone else uses the systems those secrets power without ever seeing a value.
+---
+
+<Callout title="In plain terms">
+One person — the owner — holds every credential. Everyone else on the team can
+use the systems those credentials power without ever seeing a single value.
+That split is called "use without seeing," and it is enforced by the platform,
+not by anyone's good behavior.
+</Callout>
+
+## Two places, no more
+
+A secret **value** exists in exactly two places:
+
+1. The **owner's local** `.env.*` files, on the owner's machine, never
+   committed to git.
+2. **GitHub's encrypted environment secrets**, set once by the owner and never
+   displayed again — to anyone, owner included.
+
+Nowhere else. Not in git history, not in chat, not in logs, not pasted into an
+agent's context. `.env` files are kept out of git by a gitignore guard plus a
+pre-commit hook that blocks accidents, and `.env.example` carries `replace-me`
+placeholders only. Writing an environment secret requires repo admin, so on
+any repo only the owner can share a secret — by default, without any extra
+configuration.
+
+What everyone else discusses are key **names**: `CRM_API_KEY`, `DRY_RUN`,
+`CRON_SECRET`. Names are safe to document; values are not. If you can read a
+value, you are the owner.
+
+## Use without seeing
+
+A developer's entire access model is: *run workflows that inject a given
+environment's secrets.* A GitHub Actions job receives an environment's secrets
+only when it declares that `environment:` — and only after that environment's
+required reviewers approve. So permission to *use* pilot or production
+credentials is literally a reviewer's approval, and revoking it is removing
+reviewer status. No copy of a credential ever changes hands.
+
+## The three sandboxing layers
+
+Isolating credentials by [environment](/docs/glossary#environment) is half the
+model. The other half is sandboxing the **agents** that use them — what an
+automated run may and may not do with secrets at each layer.
+
+### Layer 1 — the local machine
+
+- `.env*` files never enter git: the gitignore guard and pre-commit hook block
+  staging anything matching `.env` / `.env.*` except `.env.example`.
+- Secrets are loaded into a shell only when needed — never displayed into a
+  shared terminal or log.
+- Agents working locally get `.env.development` only. If a task genuinely
+  needs pilot credentials, the human runs the sync and the dispatch; the agent
+  never needs the values in its context.
+
+### Layer 2 — CI (GitHub Actions)
+
+- Secrets arrive only via explicit `env:` mappings on a job that declares the
+  matching `environment:` — per-variable mapping, never wholesale dumps, so
+  the workflow file documents exactly what each job can see.
+- The environment block is never echoed, `env` listings never run in debug
+  steps, and step debug logging stays off for production runs unless someone
+  is actively firefighting.
+- Third-party Actions are pinned to reviewed tags or SHAs, because a
+  malicious action can read a job's entire secret context. Separately, a
+  scheduled gitleaks scan (`--redact`) catches any secret that slips past
+  the local guards.
+
+### Layer 3 — the agent runtime
+
+- Agents read secrets from the process environment and reference them **by
+  name** — never from files, never as command-line arguments (visible in the
+  process list), never interpolated into prompts or logs.
+- On failure, a run reports status codes and key names — not headers or
+  bodies.
+- [Dry-run](/docs/glossary#dry-run) is a first-class mode, and rate limits and
+  budgets live in the environment too, so a runaway agent hits a wall before
+  it spends anything. See [Governance](/docs/concepts/governance).
+
+<Mermaid
+  chart={`graph TD
+    L1["Layer 1 · Local machine<br/>Owner's .env files — never committed"]
+    L2["Layer 2 · CI · GitHub Actions<br/>Encrypted environment secrets — per job, after review"]
+    L3["Layer 3 · Agent runtime<br/>process.env by name — never printed, logged, or pasted"]
+    L1 -->|"owner syncs — key names only"| L2
+    L2 -->|"injected after reviewers approve"| L3`}
+  caption="Three layers stand between a stored secret and a running agent."
+/>
+
+## What this means for you
+
+- **If you are the owner:** you are the only place values exist. Rotate a
+  credential by editing one line locally and re-syncing — that is the whole
+  procedure, and the step-by-step commands are on the
+  [Secrets](/docs/build/secrets) page. This page is the model; that page is
+  the procedure.
+- **If you are anyone else:** you will never see a value, and you do not need
+  to — request the environment dispatch you need and a reviewer approves it.
+  The [Environments](/docs/concepts/environments) page explains the ladder.
+
+Key terms: [environment](/docs/glossary#environment),
+[gate](/docs/glossary#gate), [dry-run](/docs/glossary#dry-run),
+[PII](/docs/glossary#pii).

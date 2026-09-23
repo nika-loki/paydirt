@@ -29,6 +29,8 @@ A single open-source repo consumable through three doors, ordered by audience si
 - **Automated secrets sync to Vercel.** v1 documents the manual owner path (`vercel env add`; values never displayed). `--target vercel` for `sync-secrets.sh` is future work.
 - **Turborepo, scaffolding CLIs, docs sites, dashboards.**
 
+Revision 2026-09-23: docs sites removed from non-goals — gtm-docs is now a first-class product direction: an open-source self-hosted GTM documentation app (apps/gtm-docs, Fumadocs/Next), with live sync of HubSpot/Salesforce/Clay as phase 2. Repo layout gains apps/ — apps are consumers like workflows (apps → connectors → core; plugins still import no TS).
+
 ## Key assumptions (confirm or correct at review)
 
 1. First connectors: **HubSpot, then Clay**; Salesforce third (follow-up).
@@ -46,11 +48,13 @@ paydirt/
 ├── workflows/                         # deployable scenario apps
 │   ├── hubspot-clay-sync/             # api/workflows/, api/trigger.ts, vercel.json, test/
 │   └── crm-hygiene/                   # same shape; read-only; SAMPLE_DATA demo mode
+├── apps/                              # consumer apps (layered like workflows)
+│   └── gtm-docs/                      # gtm-docs: self-hosted GTM documentation app (Fumadocs/Next)
 ├── packages/
 │   └── core/                          # @paydirt/core: RunContext, dry-run guard, budget meter
 ├── plugins/
 │   └── gtm-sandbox/                   # unchanged; + references/vercel-workflows.md
-├── pnpm-workspace.yaml                # connectors/*, workflows/*, packages/*
+├── pnpm-workspace.yaml                # apps/*, connectors/*, workflows/*, packages/*
 ├── marketplace.json                   # "paydirt" (renamed from sandbox-bootstrap)
 ├── .claude-plugin/marketplace.json    # renamed
 ├── plugins/marketplace.json           # renamed (local dev catalog)

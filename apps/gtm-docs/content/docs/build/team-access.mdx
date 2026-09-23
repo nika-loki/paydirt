@@ -1,0 +1,70 @@
+---
+title: Team access
+description: The owner / reviewer / developer split — one person holds credential values, everyone else gets permission to use them, enforced by GitHub.
+---
+
+The core loop of a shared sandbox: **one owner holds the credentials; everyone
+else gets permission to *use* them, never to *see* them.** GitHub already
+enforces this split — the plugin just makes it explicit.
+
+This page is the condensed model. Roles, the permission mapping, and both
+checklists live in full in
+[`plugins/gtm-sandbox/skills/gtm-sandbox/references/team-access.md`](https://github.com/nika-loki/paydirt/blob/main/plugins/gtm-sandbox/skills/gtm-sandbox/references/team-access.md)
+in the repo.
+
+## Roles
+
+| Role | Holds credential values | GitHub permission | Duties |
+| --- | --- | --- | --- |
+| Owner | Yes — local `.env.*` | Repo **admin** | Obtains keys, syncs secrets, configures gates |
+| Reviewer | No | Added on the environment | Approves runs that unlock pilot/production secrets |
+| Developer | No (development values at most) | Repo write / read | Builds workflows, dispatches runs, never sees values |
+
+Writing environment secrets requires repo **admin** by default — so "only the
+owner can share" is enforced by GitHub, not by convention. And after a sync,
+GitHub never displays values to *anyone*, owner included.
+
+## What "permission to a secret" means
+
+GitHub environment secrets have no per-user read ACL. Access is the ability to
+**cause a workflow run that injects them**, controlled by the environment's
+protection rules:
+
+| The owner wants to… | GitHub mechanism |
+| --- | --- |
+| Let anyone experiment with scratch keys | `development` environment, no protection rules — any collaborator runs |
+| Let a developer's runs use pilot credentials | Add them as a **required reviewer** on `pilot`, or approve case-by-case |
+| Restrict which code may touch production secrets | **Deployment branches** on `production` (e.g. `main` + `v*` tags only) |
+| Revoke someone's access | Remove reviewer status; rotate the credential if misuse is suspected |
+| Share actual values (development only) | Hand over `.env.development` via a password manager — never chat, never git |
+
+The decision rule: pilot and production values leave the owner's machine
+exactly zero times. Development values are low-blast-radius by construction
+(vendor sandbox keys, fake data), so sharing them is a judgment call, not an
+incident.
+
+## Owner checklist (once per repo)
+
+1. Scaffold with `/sandbox-init`; sync with `scripts/sync-secrets.sh`.
+2. Keep the three `.env.*` files on your machine only.
+3. Configure protection rules — none on `development`; one reviewer + `main` on
+   `pilot`; two reviewers + `main`/`v*` on `production`.
+4. Invite developers as collaborators with write — **never admin** unless they
+   become owners.
+5. Point new teammates at `/sandbox-join`.
+
+Developers: see [Quickstart](/docs/build/quickstart) for the join flow. Short
+version — clone, authenticate `gh`, dispatch a `development` run to verify, then
+request pilot access from the owner. You will never receive pilot or production
+values; a task that seems to need them needs a *run against that environment*.
+
+## Anti-patterns
+
+- Pasting any value into chat, a ticket, or a code review "just this once" —
+  once a value exists in a transcript, treat it as public and rotate.
+- Granting repo admin to share secrets "more easily" — admin grants *write* to
+  all secrets; add a reviewer instead.
+- Sharing `.env.production` with the on-call developer — give them reviewer
+  status, not the file.
+- A `shared-dev` copy of production credentials — development stays
+  low-blast-radius or the whole model collapses.

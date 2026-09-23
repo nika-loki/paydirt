@@ -1,0 +1,13 @@
+{
+  "$schema": "https://paydirt.dev/schemas/app-v1.json",
+  "category": "marketing",
+  "domain": "hubspot.com",
+  "kind": "app",
+  "richProfiles": [
+    "hubspot-automation"
+  ],
+  "slug": "hubspot",
+  "title": "HubSpot",
+  "vendor": "HubSpot",
+  "version": 1
+}

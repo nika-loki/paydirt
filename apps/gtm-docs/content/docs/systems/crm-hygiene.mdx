@@ -1,0 +1,204 @@
+---
+title: CRM hygiene
+description: A weekly janitor that finds duplicate and stale CRM records and reports them — touching nothing.
+---
+
+<Callout type="info" title="Status: designed">
+  This page is a **design record**. The system is spec'd for paydirt **0.5.0**
+  and implementation is in progress — the code lands with the 0.5.0 rollout,
+  and this record documents the design that code implements.
+</Callout>
+
+## Summary
+
+CRM hygiene is a weekly janitor for the CRM. It scans contacts, finds the
+records that are rotting — duplicates and contacts gone quiet — and reports
+them in a summary nobody has to go digging for. It touches nothing: no merges,
+no deletions, no field edits. The output is a report you act on with human
+judgment; the system itself never so much as saves a contact.
+
+## Trigger & outcome
+
+- **Trigger** — a weekly cron, jittered off the `:00` mark so it never piles
+  onto the top of the hour, firing the protected `POST /api/trigger` route.
+- **Outcome** — a summary report of counts and findings per type (duplicate,
+  stale), each finding pointing back at the record it came from. Zero writes —
+  to the CRM or anywhere else.
+
+## Workflow diagram
+
+One read-only pass. The demo-mode branch swaps live credentials for a bundled
+sample dataset and nothing else changes.
+
+<Mermaid
+  chart={`flowchart TD
+    SCHED["Cron — weekly, jittered off the :00 mark"] --> TRIGGER["POST /api/trigger — CRON_SECRET bearer"]
+    TRIGGER --> MODE{"SAMPLE_DATA = true?"}
+    MODE -->|demo mode| SAMPLE["Load bundled sample dataset — zero credentials"]
+    SAMPLE --> FETCH
+    MODE -->|live mode| FETCH["Fetch HubSpot contacts — read-only"]
+    FETCH --> DEDUPE["Dedupe heuristics — same-email and name-similarity"]
+    DEDUPE --> STALE["Staleness check — no activity for N+ days"]
+    STALE --> AGG["Aggregate findings"]
+    AGG --> REPORT["Summary report"]
+    REPORT --> DONE["Done — zero writes"]`}
+  caption="The whole run is a read: fetch, judge, aggregate, report. The SAMPLE_DATA branch powers the public demo with zero credentials present."
+/>
+
+## Data model & field mappings
+
+The scan reads contacts and produces findings. Fields carrying personal data
+are marked **PII** (shown in amber) — the trust model made visible in the
+data itself. Findings live only in the run report — they are never written
+back to the CRM.
+
+<DataModel
+  caption="HubSpot Contact yields Report Findings — one contact can be flagged several ways in a single run."
+  entities={[
+    {
+      name: 'HubSpot Contact',
+      source: 'HubSpot',
+      description: 'Read by the scan; never modified — the whole point of the read-only class.',
+      fields: [
+        {
+          name: 'hs_object_id',
+          type: 'id',
+          key: true,
+          description: 'HubSpot object id — findings reference it',
+        },
+        {
+          name: 'email',
+          type: 'email',
+          pii: true,
+          description: 'Same-email duplicate heuristic',
+        },
+        {
+          name: 'firstname',
+          type: 'string',
+          description: 'Name-similarity duplicate heuristic',
+        },
+        {
+          name: 'lastname',
+          type: 'string',
+          description: 'Name-similarity duplicate heuristic',
+        },
+        {
+          name: 'last_activity_date',
+          type: 'datetime',
+          description: 'Newest tracked activity — the staleness threshold input',
+        },
+      ],
+    },
+    {
+      name: 'Report Finding',
+      source: 'crm-hygiene',
+      description: 'One row per detected issue. Exists only inside the run report.',
+      fields: [
+        { name: 'finding_id', type: 'id', key: true },
+        {
+          name: 'contact_id',
+          type: 'string',
+          description: 'References HubSpot Contact hs_object_id',
+        },
+        {
+          name: 'finding_type',
+          type: 'enum',
+          enumValues: ['duplicate', 'stale'],
+        },
+        {
+          name: 'severity',
+          type: 'enum',
+          enumValues: ['low', 'medium', 'high'],
+        },
+        { name: 'detected_at', type: 'datetime' },
+      ],
+    },
+  ]}
+  relations={[
+    {
+      from: 'HubSpot Contact',
+      to: 'Report Finding',
+      cardinality: 'one-to-many',
+      label: 'yields',
+    },
+  ]}
+/>
+
+<FieldMap
+  title="HubSpot Contact → Report Finding"
+  mappings={[
+    {
+      source: 'hs_object_id',
+      destination: 'contact_id',
+      note: 'Pass-through — the finding points back at the record it came from',
+    },
+    {
+      source: 'email + firstname + lastname',
+      transform: 'same-email and name-similarity heuristics',
+      destination: 'finding_type',
+      note: 'duplicate — when a heuristic matches another contact',
+    },
+    {
+      source: 'last_activity_date',
+      transform: 'no activity for N+ days',
+      destination: 'finding_type',
+      note: 'stale — when older than the configured window',
+    },
+    {
+      source: 'match strength',
+      destination: 'severity',
+      note: 'Exact email matches rate high; fuzzy name matches and long-idle records rate down',
+    },
+  ]}
+/>
+
+## Attribution touch
+
+Hygiene must never create attribution — and by blast radius, it cannot. The
+scan reads the fields attribution depends on (email, names, activity dates)
+but the run has no write path at all, so no attribution marker is ever created
+or altered by it. Findings live in that report only. The definition
+of an attribution touch is in the
+[glossary entry on attribution](/docs/glossary#attribution).
+
+## Governance
+
+Two declared modes, both safe by construction:
+
+- **[`read-only`](/docs/concepts/blast-radius)** (live runs) — the class gate
+  is none beyond `CRON_SECRET`: only the owner's cron can fire the run, and
+  the run has no write path to gate. Budget and action caps still apply from
+  `@paydirt/core`.
+- **[`demo`](/docs/concepts/blast-radius)** (the public deployment) —
+  `SAMPLE_DATA=true`, public read-only, rate-limited, zero credentials
+  present. Anyone can see a governed run without owning API keys; there are
+  no secrets present to leak.
+
+| Mode            | Data                  | Credentials      | Public?                          |
+| --------------- | --------------------- | ---------------- | -------------------------------- |
+| read-only live  | real HubSpot contacts | real, owner-held | no — CRON_SECRET protected       |
+| demo            | bundled sample data   | none present     | yes — rate-limited summary       |
+
+## Build & run
+
+- **Code** — `workflows/crm-hygiene/` (lands with paydirt 0.5.0).
+- **Connector** — `@paydirt/hubspot`, reads only: contact reads always execute
+  in dry and live modes alike, and this workflow exercises no write methods.
+- **Demo deployment** — the `demo`-class instance is paydirt's public flagship
+  demo: `SAMPLE_DATA=true`, no credentials in the environment, a rate-limited
+  public endpoint showing the latest run summary.
+
+Environment keys — names only, values live with the secrets owner and every
+example value is the literal `replace-me`; no `.env*` file is ever committed:
+
+| Key                    | Role                                            |
+| ---------------------- | ----------------------------------------------- |
+| `HUBSPOT_ACCESS_TOKEN` | HubSpot read credentials — owner-held, live mode only |
+| `CRON_SECRET`          | Bearer auth for `POST /api/trigger`             |
+| `SAMPLE_DATA`          | `true` selects demo mode — sample dataset, zero credentials |
+| `DRY_RUN`              | Dry unless the literal string `false` — read caps still apply |
+
+To deploy your own: follow the [workflow template](/docs/build/workflow-template)
+for the app shape and the [deployment recipe](/docs/build/deployment) for the
+Vercel-first path — environments, gates, and rollback included. The zero-
+credential demo mode this record relies on is covered there too.

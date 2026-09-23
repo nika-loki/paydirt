@@ -1,0 +1,105 @@
+---
+title: Quickstart
+description: From zero to a working GTM sandbox — the owner bootstraps with /sandbox-init, developers join with /sandbox-join, and nobody but the owner ever sees a secret value.
+---
+
+Two roles, two commands. The **owner** creates the sandbox and holds every
+credential locally; each **developer** joins, runs workflows, and never sees a
+single secret value.
+
+This page assumes a plugin install with slash commands (Claude Code, ZCode — see
+[Install](/docs/build/install)). In any other agent, follow the manual scaffold
+path in the skill — it is the same steps done by hand.
+
+## Owner: create a sandbox
+
+<Steps>
+### Run the bootstrap
+
+```text
+/sandbox-init ~/code/outbound-pilot
+```
+
+The command scaffolds the mono-repo — gitignored `.env.*` files, the pre-commit
+guard that blocks `.env*` staging, the GitHub Actions workflow template, and
+`scripts/sync-secrets.sh` — writes a minimal runner stub, and, on your
+confirmation, creates the private GitHub repo and the three environments
+(`development`, `pilot`, `production`). It finishes with a **names-only**
+dry-run of the first secrets sync.
+
+### Sync development secrets
+
+```bash
+scripts/sync-secrets.sh --dry-run        # what would change (key names only)
+scripts/sync-secrets.sh --env development # real sync, development only
+```
+
+The script prints key names, never values. Fill `.env.pilot` and
+`.env.production` when you have real credentials, and sync them the same way.
+
+### Configure the gates
+
+In Repo → Settings → Environments, set required reviewers:
+
+- `pilot` — 1 required reviewer, deployment branch `main`
+- `production` — 2 required reviewers, branches `main` and `v*` tags
+
+This is what turns promotion into a human-approved hop instead of a flag flip.
+
+### Invite the team
+
+Invite teammates as collaborators with **write** — never admin. Point them at
+`/sandbox-join`. The full owner checklist lives in
+[Team access](/docs/build/team-access).
+</Steps>
+
+## Developer: join a sandbox
+
+<Steps>
+### Run the join command
+
+```text
+/sandbox-join owner/outbound-pilot
+```
+
+The command clones the repo, verifies `gh` is authenticated (no admin permission
+is required or expected), and does a read-only access recon of the repo's
+environments and workflows.
+
+### Prove the chain
+
+```bash
+gh workflow run gtm-workflow.yml -f environment=development -f dry_run=true
+gh run watch
+```
+
+Your dispatch injects the `development` environment's secrets into the CI job —
+and only that job. You never see the values; you see the run succeed.
+
+### Request pilot access
+
+Paste this to the owner:
+
+> Please add me as a required reviewer on the `pilot` environment
+> (Repo → Settings → Environments → pilot), or approve my dispatches when I run
+> against pilot.
+</Steps>
+
+## What a developer can and cannot do
+
+| Capability | You now? | How to get it |
+| --- | --- | --- |
+| Run workflows with development secrets | yes | — |
+| Read or change secret values | no | never — owner-only by design |
+| Run with pilot credentials | request | owner adds you as reviewer on `pilot` |
+| Run with production credentials | request | owner approval on a `production` dispatch |
+
+A task that seems to need pilot or production *values* actually needs a *run
+against that environment*. If you ever need `.env.development` locally, ask the
+owner to hand it over through a password manager — never chat, never git.
+
+<Callout type="warn">
+  No secret values anywhere in this flow — not in chat, tickets, code review,
+  or logs. Examples use <code>replace-me</code> placeholders only. The moment a
+  value exists in a transcript, treat it as public and rotate it.
+</Callout>

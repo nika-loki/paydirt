@@ -1,0 +1,73 @@
+---
+title: Deploy your own
+description: The Vercel-first deploy recipes — the gtm-docs app in one click or via the guided script, and workflow scenario apps with their environment wiring and SAMPLE_DATA demo mode.
+---
+
+Two things in this repo deploy, and both are Vercel-first: the **gtm-docs app**
+you are reading — deployable today — and the **workflow scenario apps** under
+`workflows/`, which land with paydirt **0.5.0**. This page is the recipe for
+each.
+
+## Deploy the gtm-docs app
+
+What you get is a **read-only docs instance**: every board and document renders
+for your team, while the writable studio stays local — clone the repo,
+`pnpm dev`, edit, push. No credentials are required; the content ships inside
+the build.
+
+**One click** — the repo README's Deploy Button clones the repo with
+`apps/gtm-docs` as the root directory and opens it on Vercel:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fnika-loki%2Fpaydirt&root-directory=apps%2Fgtm-docs)
+
+**Guided, from a clone:**
+
+```bash
+pnpm --filter gtm-docs exec node scripts/deploy.mjs
+```
+
+The script hand-holds five steps: it checks the Vercel CLI exists and you are
+logged in, confirms the project name and links `apps/gtm-docs` to it, offers to
+set environment variables (none are required for this read-only deploy; any
+value you enter is read with echo disabled and piped straight to the CLI —
+never printed), runs `vercel deploy --prod`, then verifies the live URL answers
+on `/docs` before declaring success. The only outbound request it makes is that
+final verification, and only to the public https URL the CLI just returned.
+
+Deployed instances are read-only by design — the studio's save path exists
+only in local development. To edit boards, clone the repo and run
+`pnpm --filter gtm-docs dev`; changes reach your deployment on the next deploy.
+
+## Deploy a workflow app
+
+Workflow packages (`workflows/hubspot-clay-sync/`, `workflows/crm-hygiene/` —
+both landing with paydirt 0.5.0) are independently deployable apps —
+Vercel-first, Render acceptable when durable-workflow semantics aren't needed.
+The
+[workflow template](/docs/build/workflow-template) is the MUST list every
+package satisfies; this is the deploy path around it.
+
+1. **Wire the environment variables** — each system record lists its keys as
+   **names only** (`HUBSPOT_ACCESS_TOKEN`, `CLAY_API_KEY`, `CRON_SECRET`,
+   `DRY_RUN`, …); values live with the secrets owner, and every example value
+   in the repo is the literal `replace-me`. Set them per environment in your
+   deployment platform, never in the repo.
+2. **Map the environment ladder to deployment targets** — development runs
+   locally (`pnpm dev`), pilot runs on a preview deployment with manual
+   triggers, production runs on the production deployment on a cron schedule.
+   The [promotion guide](/docs/build/promotion) covers the gates, the dispatch
+   contract, and rollback; [secrets](/docs/build/secrets) covers the local
+   `.env.*` lifecycle and names-only sync.
+3. **Pick demo mode if you want a public instance** — `SAMPLE_DATA=true`
+   swaps live credentials for a bundled sample dataset and nothing else
+   changes: zero credentials present, public read-only, rate-limited. The
+   `crm-hygiene` record documents this `demo` blast-radius class in detail.
+
+<Callout type="info" title="In short">
+
+gtm-docs deploys with no environment variables at all — the content ships
+inside the build. Workflow apps need their keys wired per environment; names
+live in each system record, values never touch the repo. `SAMPLE_DATA=true` is
+the zero-credential demo mode for public deployments.
+
+</Callout>

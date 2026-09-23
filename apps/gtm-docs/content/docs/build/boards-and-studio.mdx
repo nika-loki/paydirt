@@ -1,0 +1,77 @@
+---
+title: Boards & studio
+description: Authoring boards on the studio canvas — the JSON document model under content/, paste-to-model, presets and vocab, export-as-MDX for design records, and the build-time validation gate.
+---
+
+The [studio](/studio) is gtm-docs' authoring surface: a canvas where you draw
+the systems and a property panel where you describe them. Everything it edits
+is a JSON document in the repo — which means every board is reviewable in a
+pull request, and nothing is stored anywhere else.
+
+## The document model
+
+Boards live in `content/` as typed JSON documents, one file each, validated by
+schema. Five kinds exist:
+
+| Kind | Directory | What it holds |
+| --- | --- | --- |
+| `board` | `content/boards/` | A flow map: nodes (systems) and edges (data movement). `icp-pipeline.board.json` is the flagship. |
+| `app` | `content/apps/` | One card per vendor system (HubSpot, Clay, Snowflake, …) with its category and profile. |
+| `preset` | `content/presets/` | Object field templates (`hubspot.contact`, `clay.row`, …) — the fields, types, and **PII** flags the studio infers data models from. |
+| `vocab` | `content/vocab/` | The controlled vocabularies: motions (cross-sell, upsell, …), mechanisms (api-pull, enrichment-run, …), app categories. |
+| `system-record` | `content/systems/` | The structured record behind a design record (coming with paydirt 0.5.0). |
+
+A **board** is drawn in a grammar every reader learns once: card archetypes
+say what a system *is* — **source** (where data is born), **processor**
+(shapes it), **destination** (where it lands), **consumer** (the revenue
+motion that uses it) — and every arrow says how the data moves (mechanism),
+how often (cadence), and what travels (payload). Where an arrow crosses a
+credential boundary it carries the credential **name** (`SNOWFLAKE_RO_KEY`) —
+a name, never a value.
+
+## The canvas
+
+The studio shell is a board selector, a left palette of app cards, the center
+canvas, and a right property panel for whatever is selected. Drag to pan,
+scroll to zoom, use the minimap to jump around, and click any card or arrow
+for its full detail. Boards embedded in docs (`<Board src="icp-pipeline" />`
+on the [ICP pipeline record](/docs/systems/icp-pipeline)) are the same live
+canvas, not screenshots.
+
+The editor state *is* the document JSON: saves go through validation and land
+in `content/` as deterministic bytes (sorted keys, stable formatting), so diffs
+stay readable. A crash-recovery draft lives in browser storage and nowhere
+else.
+
+Saves are **local-first**: the write path exists only in development (`pnpm
+--filter gtm-docs dev`). Deployed instances mount the studio read-only with a
+clone-the-repo affordance — see [deploy your own](/docs/build/deployment).
+
+## From paste to data model
+
+Paste raw JSON (an API response, a Clay table export) or CSV into
+paste-to-model and the studio infers entities, field types, and PII flags,
+then stages them for review — rename, fix types, toggle PII — before anything
+is committed to the board. The `content/presets/` templates give the same
+starting point for known objects, and the vocabularies keep motions and
+mechanisms from drifting between records.
+
+Model boards export as **copy-as-MDX**: a ready-to-paste `<DataModel … />`
+snippet for section 4 of a design record. Flow boards are embedded directly
+with `<Board src="…" />`.
+
+## The validation gate
+
+Every document under `content/` is validated on every build — `prebuild` runs
+the content walk (`pnpm --filter gtm-docs validate`), so a malformed board or a
+schema-drifted preset fails CI before it ships. The studio's save path runs
+the same validation, which means an invalid document cannot land in `content/`
+through either door. Docs pages under `content/docs/` are excluded from the
+walk: their `meta.json` files are page-tree configuration, not documents.
+
+## Adding a record
+
+The full path from blank canvas to published page is documented in
+[Systems — adding a record](/docs/systems): author the MDX file, build or
+paste the data model in the studio, embed the board or copy the MDX, and add
+the page to `systems/meta.json` so the sidebar picks it up.

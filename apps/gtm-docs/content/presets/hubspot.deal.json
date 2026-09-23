@@ -1,0 +1,44 @@
+{
+  "$schema": "https://paydirt.dev/schemas/preset-v1.json",
+  "fields": [
+    {
+      "enumValues": [
+        "appointmentscheduled",
+        "qualifiedtobuy",
+        "presentationscheduled",
+        "decisionmakerboughtin",
+        "contractsent",
+        "closedwon",
+        "closedlost"
+      ],
+      "name": "dealstage",
+      "type": "enum"
+    },
+    {
+      "key": true,
+      "name": "deal_id",
+      "type": "id"
+    },
+    {
+      "name": "amount",
+      "type": "number"
+    },
+    {
+      "name": "closedate",
+      "type": "datetime"
+    },
+    {
+      "name": "deal_name",
+      "type": "string"
+    },
+    {
+      "name": "pipeline",
+      "type": "string"
+    }
+  ],
+  "kind": "preset",
+  "slug": "hubspot.deal",
+  "source": "HubSpot",
+  "title": "HubSpot Deal",
+  "version": 1
+}

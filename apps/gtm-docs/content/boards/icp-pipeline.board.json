@@ -1,0 +1,170 @@
+{
+  "$schema": "https://paydirt.dev/schemas/board-v1.json",
+  "boardType": "flow",
+  "edges": [
+    {
+      "data": {
+        "cadence": "daily during Q4",
+        "mechanism": "api-pull",
+        "payload": "Current members of the Product-active ICP view"
+      },
+      "id": "e5",
+      "source": "n5",
+      "target": "n6"
+    },
+    {
+      "data": {
+        "cadence": "nightly",
+        "credential": "SNOWFLAKE_RO_KEY",
+        "mechanism": "api-pull",
+        "payload": "Accounts whose product usage changed — domain, weekly active seats"
+      },
+      "id": "e1",
+      "source": "n1",
+      "target": "n2"
+    },
+    {
+      "data": {
+        "cadence": "on new row",
+        "credential": "CLAY_API_KEY",
+        "mechanism": "enrichment-run",
+        "payload": "One row per account — domain, icp_score, usage_tier"
+      },
+      "id": "e2",
+      "source": "n2",
+      "target": "n3"
+    },
+    {
+      "data": {
+        "cadence": "on run complete",
+        "credential": "HUBSPOT_ACCESS_TOKEN",
+        "mechanism": "native-sync",
+        "payload": "API push — upsert contact: person, title, icp_score, usage_tier"
+      },
+      "id": "e3",
+      "source": "n3",
+      "target": "n4"
+    },
+    {
+      "data": {
+        "cadence": "real-time",
+        "mechanism": "native-sync",
+        "payload": "Contacts matching the product-active ICP filter appear in the view"
+      },
+      "id": "e4",
+      "source": "n4",
+      "target": "n5"
+    }
+  ],
+  "kind": "board",
+  "motions": [
+    "cross-sell"
+  ],
+  "nodes": [
+    {
+      "archetype": "consumer",
+      "data": {
+        "app": "campaign",
+        "externalRef": null,
+        "motion": "cross-sell",
+        "name": "Q4 outbound motion",
+        "notes": "The Q4 cross-sell campaign — reps work the view: installed accounts with rising usage get the first touch."
+      },
+      "id": "n6",
+      "position": {
+        "x": 800,
+        "y": 340
+      }
+    },
+    {
+      "archetype": "destination",
+      "data": {
+        "app": "hubspot",
+        "externalRef": null,
+        "name": "HubSpot contacts",
+        "notes": "CRM landing spot — one enriched contact per account arrives here.",
+        "object": "contact"
+      },
+      "id": "n4",
+      "position": {
+        "x": 40,
+        "y": 340
+      }
+    },
+    {
+      "archetype": "destination",
+      "data": {
+        "app": "hubspot",
+        "externalRef": null,
+        "name": "Product-active ICP view",
+        "notes": "Saved HubSpot view — only contacts whose account is product-active and ICP-scored appear here.",
+        "view": "Product-active ICP"
+      },
+      "id": "n5",
+      "position": {
+        "x": 420,
+        "y": 340
+      }
+    },
+    {
+      "archetype": "processor",
+      "data": {
+        "app": "clay",
+        "columns": [
+          "domain",
+          "icp_score",
+          "usage_tier"
+        ],
+        "externalRef": null,
+        "name": "ICP signals",
+        "notes": "Clay table — one row per account; icp_score and usage_tier decide who sales looks at first."
+      },
+      "id": "n2",
+      "position": {
+        "x": 420,
+        "y": 40
+      },
+      "profile": "clay-table"
+    },
+    {
+      "archetype": "processor",
+      "data": {
+        "app": "clay",
+        "externalRef": null,
+        "name": "Enrichment workflow",
+        "notes": "Clay workflow — fills in company and contact details for each new row before anything reaches the CRM.",
+        "triggers": [
+          "on new row"
+        ]
+      },
+      "id": "n3",
+      "position": {
+        "x": 800,
+        "y": 40
+      },
+      "profile": "clay-workflow"
+    },
+    {
+      "archetype": "source",
+      "data": {
+        "app": "snowflake",
+        "datasets": [
+          "account_product_usage",
+          "workspace_active_seats"
+        ],
+        "externalRef": null,
+        "name": "Product analytics",
+        "notes": "Snowflake warehouse — the nightly starting signal: which companies use the product, and how much."
+      },
+      "id": "n1",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "profile": "warehouse"
+    }
+  ],
+  "slug": "icp-pipeline",
+  "title": "Product-usage ICP pipeline",
+  "version": 1
+}

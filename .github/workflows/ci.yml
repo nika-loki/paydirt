@@ -86,3 +86,24 @@ jobs:
 
       - name: Typecheck
         run: pnpm -r --if-present run typecheck
+
+  docs:
+    name: gtm-docs build (Node 22)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.6.5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build gtm-docs
+        run: pnpm --filter gtm-docs build

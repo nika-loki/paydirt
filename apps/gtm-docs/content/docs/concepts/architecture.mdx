@@ -1,0 +1,79 @@
+---
+title: Architecture
+description: paydirt's codebase layers one way — apps and workflows import connectors, connectors import @paydirt/core — and the agent plugin imports no TypeScript at all.
+---
+
+<Callout title="In plain terms">
+The repository is a layer cake, and dependencies only ever point downward:
+scenario apps at the top, connector clients in the middle, the shared
+governance core at the bottom. Nothing reaches back up — and the agent plugin
+sits beside the cake entirely, because it is markdown and shell that imports
+no code at all.
+</Callout>
+
+paydirt's layout has one structural rule, and it is enforced in review:
+
+**apps and workflows → connectors → `@paydirt/core`**
+
+- **`apps/` and `workflows/`** — the deployable scenario apps (this
+  documentation app is one of them). They orchestrate: they decide what a run
+  does and in what order.
+- **`connectors/`** — one typed client per external system (HubSpot, Clay,
+  Salesforce, …). They know how to talk to vendors — nothing else. A
+  connector imports `@paydirt/core` only: never from a workflow, never
+  sideways into another connector.
+- **`packages/core` (`@paydirt/core`)** — the
+  [RunContext](/docs/glossary#runcontext): the dry-run guard, the budget
+  meter, and the action cap. Every connector and every workflow consumes it,
+  which is how [governance](/docs/concepts/governance) is one implementation
+  rather than a convention repeated per package.
+
+Nothing imports from `workflows/` — a scenario is a leaf, never a dependency.
+
+<Mermaid
+  chart={`graph LR
+    PL["plugins<br/>markdown + bash — imports no TypeScript"]
+    WF["apps + workflows<br/>deployable scenario apps"]
+    CN["connectors<br/>one typed client per system"]
+    CORE["@paydirt/core<br/>RunContext — dry-run, budget, action cap"]
+    WF --> CN
+    CN --> CORE`}
+  caption="Dependencies point one way: down. The plugin stands apart — it imports nothing."
+/>
+
+## Plugins import nothing
+
+`plugins/gtm-sandbox` — the agent skill that scaffolds and operates all of
+this — contains markdown and shell only. It imports no TypeScript, which lets
+one skill run on every agent harness (Claude Code, ZCode, Codex, Cursor,
+Gemini CLI) without a build step. The plugin *documents* the operating model;
+the packages *implement* it.
+
+## No build step between packages
+
+The TypeScript packages — `@paydirt/core`, the connectors, the workflows —
+ship source, not compiled output: strict TypeScript, NodeNext modules, and
+packages importing each other's `.ts` sources directly. There is no build
+output to keep in sync, no generated artifacts to commit, and no drift
+between what a package contains and what a consumer sees. The trade is that
+everything lives in one workspace — which is the point.
+
+## Why one-way layering matters
+
+With dependencies pointing only downward, each layer can change without
+anything below it noticing:
+
+- A workflow can move runtimes — GitHub Actions today, a Vercel Workflow app
+  tomorrow — without rewriting its governance, because `@paydirt/core` is
+  runtime-agnostic.
+- A connector can grow (new endpoints, new vendor capabilities) without
+  touching any workflow that uses it.
+- The core can tighten a guardrail once, and every connector and workflow
+  inherits it.
+
+The reverse graph — a connector importing from a workflow, the core knowing
+about HubSpot — is how governance decays back into tribal knowledge. The
+layering rule is what keeps it structural.
+
+Key terms: [connector](/docs/glossary#connector),
+[workflow](/docs/glossary#workflow), [RunContext](/docs/glossary#runcontext).

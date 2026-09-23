@@ -7,3 +7,13 @@
 .DS_Store
 node_modules/
 .mimosa/
+.playwright-mcp/
+
+# gtm-docs app build artifacts
+apps/gtm-docs/.next/
+apps/gtm-docs/out/
+apps/gtm-docs/.source/
+apps/gtm-docs/tsconfig.tsbuildinfo
+
+# agent workflow drafts
+.zcode/

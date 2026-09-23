@@ -1,0 +1,14 @@
+{
+  "$schema": "https://paydirt.dev/schemas/vocab-v1.json",
+  "kind": "vocab",
+  "slug": "motions",
+  "title": "Motions",
+  "values": [
+    "new-business",
+    "upsell",
+    "cross-sell",
+    "renewal",
+    "retention"
+  ],
+  "version": 1
+}

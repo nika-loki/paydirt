@@ -21,8 +21,28 @@ One person — the **owner** — holds every credential locally in `.env.*` file
 
 Found a security issue? See [SECURITY.md](SECURITY.md).
 
+## Deploy your own
+
+**gtm-docs** — paydirt's open-source GTM documentation app (flow boards, data
+models, governance docs) — deploys to Vercel in one click. What you get is a
+**read-only docs instance**: every board and document renders for your team,
+while the writable studio stays local — clone the repo, `pnpm dev`, edit, push.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fnika-loki%2Fpaydirt&root-directory=apps%2Fgtm-docs)
+
+Prefer the guided CLI path? From a clone of this repo:
+
+```bash
+pnpm --filter gtm-docs exec node scripts/deploy.mjs
+```
+
+The script hand-holds the whole way: Vercel auth check, project name
+confirmation, env vars (none required — Phase 1 docs are read-only),
+deploy, and a live-URL verification on `/docs`.
+
 ## Table of contents
 
+- [Deploy your own](#deploy-your-own)
 - [How it works](#how-it-works)
 - [Supported tools](#supported-tools)
 - [Install](#install)

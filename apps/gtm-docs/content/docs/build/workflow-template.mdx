@@ -1,0 +1,67 @@
+---
+title: Workflow template
+description: The MUST list every workflows/* package satisfies — the use workflow / use step split, the CRON_SECRET-protected trigger route, and blast-radius declaration with its gate.
+---
+
+One package per scenario (for example `hubspot-clay-sync`), each an
+independently deployable app — **Vercel-first; Render acceptable** when
+durable-workflow semantics aren't needed. A workflow package **MUST** satisfy
+every item below, condensed from
+[`workflows/README.md`](https://github.com/nika-loki/paydirt/blob/main/workflows/README.md).
+
+## The MUST list
+
+- [ ] **Keep orchestration in `"use workflow"` functions; all connector I/O in
+  `"use step"` functions** (plainly: `use workflow` marks the orchestration
+  functions that shape the run, while `use step` marks the connector-I/O
+  functions that talk to external systems — a step that only does I/O holds
+  no in-run state, which is what makes it safe to retry). The workflow
+  declares the shape of the run; steps do the talking to external systems
+  through connectors.
+- [ ] **Expose one protected route — `POST /api/trigger` — authenticated by
+  `CRON_SECRET`.** The same route both starts runs and resumes approval hooks:
+  only the owner's cron (or the owner) can fire or resume.
+- [ ] **Declare a blast radius in the README** — one of `demo`, `read-only`,
+  `writes-internal`, `sends-external` — and carry the matching gate.
+- [ ] **Respect `@paydirt/core` semantics**: `DRY_RUN`
+  anything-but-literal-`"false"` is dry; budgets and action caps are enforced,
+  not advisory.
+- [ ] **Ship offline unit tests for steps** and a `.env.example` whose values
+  are literally `replace-me`.
+- [ ] **Import connectors and `@paydirt/core` only.** Nothing imports from
+  `workflows/`.
+
+## Blast-radius classes and their gates
+
+| Class | Example | Gate |
+| --- | --- | --- |
+| `demo` | crm-hygiene (sample mode) | public read-only, `SAMPLE_DATA=true`, rate-limited, zero credentials |
+| `read-only` | crm-hygiene (live) | none beyond `CRON_SECRET` |
+| `writes-internal` | hubspot-clay-sync | approval hook before first write batch |
+| `sends-external` | (future) sequencer | approval hook + production-only sends |
+
+## Environment mapping
+
+| Environment | Deployment |
+| --- | --- |
+| development | local `pnpm dev` |
+| pilot | preview deployment + manual trigger |
+| production | production deployment + cron |
+
+Schedule crons at a jittered minute (avoid `:00`) so every deployment doesn't
+hit vendors on the hour.
+
+## The human gate
+
+GitHub reviewer approvals map to a Workflow DevKit approval hook — "use without
+seeing" carries over: developers deploy and trigger dry runs; only the owner
+holds the secret releasing live writes.
+
+<Mermaid
+  caption="The approval gate: plan first, ask a human, then apply — or discard."
+  chart={`flowchart LR
+    A["Compute planned writes (dry steps)"] --> B["createHook with approval token"]
+    B -->|"resumed approved: true"| C["Write steps execute — DRY_RUN still respected"]
+    B -->|"resumed approved: false"| D["Run ends — plan discarded"]
+  `}
+/>

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://paydirt.dev/schemas/preset-v1.json",
+  "fields": [
+    {
+      "enumValues": [
+        "open",
+        "working",
+        "nurturing",
+        "unqualified",
+        "converted"
+      ],
+      "name": "status",
+      "type": "enum"
+    },
+    {
+      "key": true,
+      "name": "lead_id",
+      "type": "id"
+    },
+    {
+      "name": "company",
+      "type": "string"
+    },
+    {
+      "name": "created_date",
+      "type": "datetime"
+    },
+    {
+      "name": "email",
+      "pii": true,
+      "type": "email",
+      "unique": true
+    },
+    {
+      "name": "first_name",
+      "pii": true,
+      "type": "string"
+    },
+    {
+      "name": "last_name",
+      "pii": true,
+      "type": "string"
+    },
+    {
+      "name": "phone",
+      "pii": true,
+      "type": "phone"
+    }
+  ],
+  "kind": "preset",
+  "slug": "salesforce.lead",
+  "source": "Salesforce",
+  "title": "Salesforce Lead",
+  "version": 1
+}

@@ -1,0 +1,239 @@
+---
+title: "HubSpot → Clay sync"
+description: Keeps HubSpot contacts flowing into a Clay enrichment table — scheduled pull, human-approved writes, budget-capped throughout.
+---
+
+<Callout type="info" title="Status: designed">
+  This page is a **design record**. The system is spec'd for paydirt **0.5.0**
+  and implementation is in progress — the code lands with the 0.5.0 rollout,
+  and this record documents the design that code implements.
+</Callout>
+
+## Summary
+
+This system keeps HubSpot contacts flowing into a Clay enrichment table so the
+team can enrich records without anyone hand-exporting CSVs. New and changed
+contacts are pulled on a schedule, the intended Clay writes are computed as a
+plan first, a human approves the plan before the first row is written, and
+every billable call is budget-capped. For operators it answers one question: the
+enrichment table is always stocked with the people marketing just touched in
+the CRM — and a person said yes before anything was written.
+
+## Trigger & outcome
+
+- **Trigger** — a scheduled pull of new and changed HubSpot contacts (a cron
+  at a jittered minute, off the busy `:00` mark, firing the protected
+  `POST /api/trigger` route).
+- **Outcome** — Clay rows created: one row per new or changed contact, keyed
+  by the HubSpot record id so replays update rows instead of duplicating them.
+  A rejected approval produces no rows — the plan is discarded.
+
+## Workflow diagram
+
+The run plans before it writes: every Clay write is computed as a plan first,
+a human approves the plan, and only then does the write batch run.
+
+<Mermaid
+  chart={`sequenceDiagram
+    autonumber
+    participant CRON as Cron (jittered minute)
+    participant API as POST /api/trigger
+    participant WF as hubspot-clay-sync
+    participant HS as HubSpot
+    participant CLAY as Clay
+    participant GATE as Approval hook
+
+    CRON->>API: scheduled fire, CRON_SECRET bearer
+    API->>WF: start run
+    WF->>HS: pull new and changed contacts — use step
+    HS-->>WF: contacts changed since last cursor
+    WF->>WF: compute planned Clay writes — dry steps
+    WF->>GATE: approval hook before first write batch
+    alt owner resumes approved
+        GATE-->>WF: resumed approved
+        WF->>CLAY: apply planned writes — use step
+        CLAY-->>WF: Clay rows created
+    else owner resumes rejected
+        GATE-->>WF: resumed rejected
+        WF->>WF: run ends, plan discarded
+    end
+    WF-->>CRON: run summary — rows planned, applied, budget spent`}
+  caption="Plan → approval hook → apply. A rejection discards the plan; DRY_RUN is still respected inside the write steps."
+/>
+
+## Data model & field mappings
+
+Two objects, one hop. Fields carrying personal data are marked **PII** (shown
+in amber) — the trust model made visible in the data itself.
+
+<DataModel
+  caption="HubSpot Contact syncs to Clay Row — one contact may already have a row from a previous run."
+  entities={[
+    {
+      name: 'HubSpot Contact',
+      source: 'HubSpot',
+      description: 'The CRM record of a person. Read by this workflow; never modified by it.',
+      fields: [
+        {
+          name: 'hs_object_id',
+          type: 'id',
+          key: true,
+          description: 'HubSpot object id — the sync identity',
+        },
+        {
+          name: 'email',
+          type: 'email',
+          pii: true,
+          description: 'Primary match key for enrichment',
+        },
+        { name: 'firstname', type: 'string' },
+        { name: 'lastname', type: 'string' },
+        {
+          name: 'lifecycle_stage',
+          type: 'enum',
+          enumValues: [
+            'subscriber',
+            'lead',
+            'MQL',
+            'SQL',
+            'opportunity',
+            'customer',
+          ],
+          description: 'Vendor lifecycle stage — HubSpot-side only',
+        },
+        {
+          name: 'last_modified_date',
+          type: 'datetime',
+          description: 'Change cursor — only contacts modified since the last run are pulled',
+        },
+      ],
+    },
+    {
+      name: 'Clay Row',
+      source: 'Clay',
+      description: 'One row in the enrichment table this workflow keeps stocked.',
+      fields: [
+        { name: 'clay_row_id', type: 'id', key: true },
+        {
+          name: 'hubspot_vid',
+          type: 'string',
+          unique: true,
+          description: 'Vendor record id — kept so replays update instead of duplicating',
+        },
+        {
+          name: 'email',
+          type: 'email',
+          pii: true,
+          description: 'Normalized copy of the HubSpot email',
+        },
+        {
+          name: 'enrichment_status',
+          type: 'enum',
+          enumValues: ['pending', 'enriching', 'enriched', 'failed'],
+          description: 'Set by Clay enrichment after the row lands',
+        },
+        {
+          name: 'synced_at',
+          type: 'datetime',
+          description: 'When a sync run last touched this row',
+        },
+      ],
+    },
+  ]}
+  relations={[
+    {
+      from: 'HubSpot Contact',
+      to: 'Clay Row',
+      cardinality: 'one-to-many',
+      label: 'syncs to',
+    },
+  ]}
+/>
+
+<FieldMap
+  title="HubSpot Contact → Clay Row"
+  mappings={[
+    {
+      source: 'hs_object_id',
+      destination: 'hubspot_vid',
+      note: 'Vendor record id kept for idempotency — a replay updates the row instead of creating a duplicate',
+    },
+    {
+      source: 'email',
+      transform: 'lowercase + trim',
+      destination: 'email',
+      note: 'Normalized so enrichment matching never misses on casing or padding',
+    },
+    {
+      source: 'lifecycle_stage',
+      destination: '(not mapped)',
+      note: 'HubSpot-side only — read for filtering, never written forward to Clay',
+    },
+    {
+      source: 'Clay enrichment columns',
+      destination: 'enrichment_status',
+      note: 'The enrichment write-back this sync exists to enable — Clay sets it after the row lands',
+    },
+  ]}
+/>
+
+## Attribution touch
+
+This system sits upstream of attribution: it creates no attribution markers
+of its own — the only thing it creates is a Clay row. It reads
+`lifecycle_stage` to decide who flows into enrichment, and that enrichment
+later influences which contacts get qualified and how deals are credited
+downstream; first-touch and lifecycle markers stay owned by HubSpot. The
+[glossary entry on attribution](/docs/glossary#attribution) is the canonical
+definition.
+
+## Governance
+
+**[Blast radius](/docs/concepts/blast-radius): `writes-internal`** — declared
+in the workflow README, and the
+gate that class carries is non-negotiable: an **approval hook before the first
+write batch**. The run computes its planned Clay writes in dry steps, pauses at
+the hook, and only a resume carrying approval applies anything; a rejection
+ends the run with the plan discarded.
+
+The environment ladder decides how armed the writes are — promotion changes
+inputs, not code:
+
+| Environment | Runs where                              | Credentials                    | Dry-run?                          | Human gate                       |
+| ----------- | --------------------------------------- | ------------------------------ | --------------------------------- | -------------------------------- |
+| development | local `pnpm dev`, manual trigger        | vendor sandbox keys, fake data | dry by default                    | none                             |
+| pilot       | preview deployment, manual trigger      | real keys, small audience      | dry by default                    | 1 required reviewer, `main`      |
+| production  | production deployment, cron             | real everything, live          | live only when armed              | 2 required reviewers, `main`/`v*` |
+
+Budgets and caps are enforced, not advisory: every billable call is charged to
+the run's budget meter and the run throws at `DAILY_BUDGET_USD`;
+`MAX_ACTIONS_PER_RUN` caps the action count per run. The `DRY_RUN` rule is
+anything-but-literal-`"false"` is dry — so in development and pilot this
+workflow plans but never writes unless explicitly armed.
+
+## Build & run
+
+- **Code** — `workflows/hubspot-clay-sync/` (lands with paydirt 0.5.0).
+- **Connectors** — `@paydirt/hubspot` (contact reads) and `@paydirt/clay`
+  (table writes), both constructed over an `@paydirt/core` `RunContext`.
+- **Trigger** — one protected route, `POST /api/trigger`, authenticated by a
+  `CRON_SECRET` bearer. It both starts runs and resumes the approval hook.
+- **Steps** — all connector I/O happens in `use step` functions; orchestration
+  stays in `use workflow`. The write batch waits on the approval hook.
+- **Blast radius** — declared in the workflow README: `writes-internal`.
+
+Environment keys — names only, values live with the secrets owner and every
+example value is the literal `replace-me`; no `.env*` file is ever committed:
+
+| Key                  | Role                                              |
+| -------------------- | ------------------------------------------------- |
+| `HUBSPOT_ACCESS_TOKEN` | HubSpot read credentials — owner-held           |
+| `CLAY_API_KEY`         | Clay table write credentials — owner-held       |
+| `CRON_SECRET`          | Bearer auth for `POST /api/trigger`             |
+| `DRY_RUN`              | Dry unless the literal string `false`           |
+| `MAX_ACTIONS_PER_RUN`  | Per-run action cap, enforced by `RunContext`    |
+| `DAILY_BUDGET_USD`     | Daily spend cap on billable calls               |
+
+To deploy your own: follow the [workflow template](/docs/build/workflow-template)
+for the app shape and the [deployment recipe](/docs/build/deployment) for the
+Vercel-first path — environments, gates, and rollback included.

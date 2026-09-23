@@ -1,0 +1,67 @@
+---
+title: Blast radius
+description: Every paydirt system declares one of four blast-radius classes up front — demo, read-only, writes-internal, sends-external — and that declaration decides the gate the system must carry.
+---
+
+<Callout title="In plain terms">
+"Blast radius" is the honest answer to one question: if this automation
+misbehaves, what is the worst it can do? Every system declares its answer
+before it is built, in one of four standard classes — and the class decides
+which safety gate the system must have.
+</Callout>
+
+Every [workflow](/docs/glossary#workflow) declares a
+[blast radius](/docs/glossary#blast-radius) — one of four classes — and
+carries the [gate](/docs/glossary#gate) that matches it. The declaration
+lives in the workflow's README and in its design record, so a reader sees the
+worst case before reading anything else.
+
+| Class | Example | Gate |
+| --- | --- | --- |
+| `demo` | `crm-hygiene` in sample mode | Public read-only, `SAMPLE_DATA=true`, rate-limited, zero credentials |
+| `read-only` | `crm-hygiene` (live) | None beyond `CRON_SECRET` auth on the trigger |
+| `writes-internal` | `hubspot-clay-sync` | Approval hook before the first write batch |
+| `sends-external` | (future) an outbound sequencer | Approval hook, and sends restricted to production |
+
+## The four classes, in order of risk
+
+- **`demo`** — the system runs on sample data with no credentials present at
+  all. There is nothing to leak and nothing to damage; the gate is structural
+  (public, read-only, rate-limited) rather than procedural. This is why a
+  public demo that anyone can poke at is safe by construction.
+- **`read-only`** — the system reads real records and writes nothing. The
+  only gate is authenticating the trigger (`CRON_SECRET`), because a reader
+  cannot mutate your CRM even if it misbehaves.
+- **`writes-internal`** — the system changes records inside your own systems
+  (a CRM-to-CRM sync, for instance). Before the first write batch executes, a
+  human approves the plan through an approval hook: the run computes what it
+  would change as a [dry-run](/docs/glossary#dry-run) plan, a person reviews
+  it, and only approval applies the writes.
+- **`sends-external`** — the system sends things to the outside world on your
+  behalf (email sequences, purchases). Approval hook *plus* the send path is
+  restricted to production, so a pilot run physically cannot email your
+  customers.
+
+## Why declaring it up front is the whole game
+
+The taxonomy is not paperwork; it is the design step that decides everything
+else:
+
+- **The gate is matched to risk, not to hope.** The class mechanically
+  determines the gate, so "we'll be careful" is never the control. Gates are
+  enforced in code — approval hooks, dry-run defaults — not advisory.
+- **The hard conversation happens before the code.** Declaring
+  `sends-external` in a proposal forces the question — do you really want
+  software sending as you? — while it is still cheap to answer "no."
+- **Design records become comparable.** Every [system page](/docs/systems)
+  states its class in its governance section, so two systems can be compared
+  on risk at a glance, without reading either one's code.
+- **The public demo falls out for free.** A `demo`-class deployment needs no
+  extra safety story: sample data only, no secrets present to leak,
+  rate-limited by class definition.
+
+A system that cannot say which class it is is not ready to be built.
+
+Key terms: [blast radius](/docs/glossary#blast-radius),
+[gate](/docs/glossary#gate), [dry-run](/docs/glossary#dry-run),
+[workflow](/docs/glossary#workflow).
