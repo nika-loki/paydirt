@@ -18,6 +18,13 @@ SKILL_SRC="$REPO_ROOT/plugins/gtm-sandbox/skills/$SKILL_NAME"
 
 [ -d "$SKILL_SRC" ] || { echo "error: skill source not found at $SKILL_SRC" >&2; exit 1; }
 
+tilde() { # $1 = path; print with ~ prefix when under $HOME (bash 3.2-safe)
+  case "$1" in
+    "$HOME"*) printf '~%s' "${1#"$HOME"}" ;;
+    *)        printf '%s' "$1" ;;
+  esac
+}
+
 usage() {
   cat <<EOF
 Usage: ./install.sh [options]
@@ -64,7 +71,7 @@ if [ "$MODE" = "list" ]; then
   printf '%s\n' "------------------------------------------------------------------"
   printf '%s\n' "$TOOLS" | while IFS='|' read -r tool dir; do
     if [ -d "$dir" ]; then det="yes"; else det="no"; fi
-    printf '%-8s %-30s %s\n' "$tool" "${dir/#$HOME/\~}" "$det"
+    printf '%-8s %-30s %s\n' "$tool" "$(tilde "$dir")" "$det"
   done
   exit 0
 fi
@@ -122,16 +129,16 @@ printf '%s\n' "$TOOLS" | while IFS='|' read -r tool dir; do
   if [ "$MODE" = "remove" ]; then
     if [ -d "$dest" ]; then
       remove_skill_dir "$dest" "$dir"
-      printf 'removed:   %s/%s (%s)\n' "${dir/#$HOME/\~}" "$SKILL_NAME" "$tool"
+      printf 'removed:   %s/%s (%s)\n' "$(tilde "$dir")" "$SKILL_NAME" "$tool"
     else
-      printf 'absent:    %s/%s (%s)\n' "${dir/#$HOME/\~}" "$SKILL_NAME" "$tool"
+      printf 'absent:    %s/%s (%s)\n' "$(tilde "$dir")" "$SKILL_NAME" "$tool"
     fi
   else
     mkdir -p "$dir"
     remove_skill_dir "$dest" "$dir"
     cp -R "$SKILL_SRC" "$dest"
     chmod +x "$dest/scripts/sync-secrets.sh" "$dest/assets/hooks/pre-commit"
-    printf 'installed: %s/%s (%s)\n' "${dir/#$HOME/\~}" "$SKILL_NAME" "$tool"
+    printf 'installed: %s/%s (%s)\n' "$(tilde "$dir")" "$SKILL_NAME" "$tool"
   fi
 done
 
