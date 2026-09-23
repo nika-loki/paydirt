@@ -75,6 +75,8 @@ paydirt/
 
 ## Workflow app template
 
+**Deployment targets (user decision, 2026-09-23):** Vercel-first — Vercel Workflows (DevKit) and the Vercel stack for durable scenarios; **Render is an accepted alternative** for services that don't need durable-workflow semantics. The conventions layer (`@paydirt/core`) stays runtime-agnostic so a scenario can move runtimes without rewriting its governance.
+
 - **Entry**: Hono; one protected route `POST /api/trigger` → `start(workflow)` and `resumeHook` for approvals. Auth: `CRON_SECRET` bearer — only the owner's cron or the owner fires/resumes.
 - **Workflows**: orchestration in `"use workflow"`; all connector I/O in `"use step"` functions.
 - **Scheduling**: `vercel.json` crons at a jittered minute (avoid `:00`).
