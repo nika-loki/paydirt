@@ -2,6 +2,16 @@
 
 All notable changes to GTM Sandbox are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is semantic.
 
+## [Unreleased]
+
+### Added
+
+- pnpm workspace (Node ≥ 22, exact versions, committed lockfile) covering `connectors/*`, `workflows/*`, `packages/*`.
+- `@paydirt/core` v0.1.0: `RunContext` — dry-run rule (`DRY_RUN` anything-but-literal-`"false"`; default dry except production), per-run budget meter (`DAILY_BUDGET_USD`), action cap (`MAX_ACTIONS_PER_RUN`); offline vitest suite.
+- Structure test gate: catalog naming + version lockstep + no tracked `.env*` + connector/workflow package checklists enforcement + layering checks.
+- CI: Node 22 unit-test + typecheck job (pnpm, frozen lockfile) alongside the bash matrix.
+- Agent entry docs (`AGENTS.md`/`CLAUDE.md`) rewritten for the workspace; `connectors/README.md` and `workflows/README.md` package contracts.
+
 ## [0.4.0] — 2026-09-23
 
 ### Changed

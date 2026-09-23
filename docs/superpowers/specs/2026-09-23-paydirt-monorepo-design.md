@@ -34,7 +34,7 @@ A single open-source repo consumable through three doors, ordered by audience si
 1. First connectors: **HubSpot, then Clay**; Salesforce third (follow-up).
 2. First workflows: **`hubspot-clay-sync`** (HubSpot → Clay only in v1; reverse sync is follow-up) and **`crm-hygiene`** (read-only; doubles as the public demo).
 3. **Hono** app shell; **pnpm** workspaces; Node 22; workflows dir named `workflows/`.
-4. Plugin versioning: the brand rename shipped as **0.4.0** (rename-only release); the monorepo restructure (rollout steps 2–8) lands as **0.5.0**. Lockstep rule (both manifests + all catalogs) applies to each bump.
+4. Plugin versioning: the brand rename shipped as **0.4.0**. The workspace infrastructure (rollout step 2 + gates/CI/docs) lands under **[Unreleased]**; **0.5.0** stamps when connector and workflow content (steps 3–6) ships. Lockstep rule applies to each bump.
 
 ## Repo layout (target)
 
