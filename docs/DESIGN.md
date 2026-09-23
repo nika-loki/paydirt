@@ -26,6 +26,14 @@ Let AI agents build and operate GTM automations without secrets leaking into git
 2. **CI**: secrets only via explicit per-variable `env:` mapping on jobs declaring `environment:`; `permissions: {}`; gitleaks recommended as a second net.
 3. **Agent runtime**: secrets read from process environment, never logged, never CLI arguments; per-run action and budget caps (`MAX_ACTIONS_PER_RUN`, `DAILY_BUDGET_USD`) so runaway agents hit walls.
 
+## Team access model (v0.3)
+
+The product's differentiator, stated plainly: **the owner shares permission to use secrets, never the secrets.** GitHub's own mechanics implement the split — `gh secret set/list/delete` on environments requires repo admin (owner-only by default), GitHub never displays set values to anyone, and the only way a job receives an environment's secrets is a run that passes that environment's protection rules. Access to "have pilot credentials" therefore decomposes into: a dispatchable workflow + a required-reviewer seat. Revocation = remove reviewer; value compromise = rotate via vendor + re-sync.
+
+The join flow (`/sandbox-join`) is deliberately unprivileged: developers need `gh auth` and nothing more, and every failure mode ("permission denied" on secret writes, pending approval on dispatches) is the model *working*, so the command instructs agents to report rather than work around. Development values remain shareable-by-judgment (low blast radius by construction); pilot/production values leave the owner's machine zero times.
+
+Decisions recorded 2026-09-23: GTM positioning retained (pilot-to-production for GTM automations is the wedge); license stays MIT; developer join flow ships as the v0.3 headline.
+
 ## Universal packaging
 
 The skill layer is the portable contract: `SKILL.md` + `references/` + `scripts/` + `assets/` follows the open Agent Skills format (agentskills.io) adopted by Claude Code, Codex, Gemini CLI, Cursor, and ZCode — identical content works in every tool. Everything tool-specific lives in thin manifests around it:

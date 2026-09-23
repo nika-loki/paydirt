@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Offline test suite (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate JSON manifests and catalogs
+        run: |
+          for f in plugins/gtm-sandbox/.claude-plugin/plugin.json \
+                   plugins/gtm-sandbox/.zcode-plugin/plugin.json \
+                   .claude-plugin/marketplace.json \
+                   marketplace.json \
+                   plugins/marketplace.json; do
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" && echo "valid: $f"
+          done
+
+      - name: Assert version lockstep across manifests and catalogs
+        run: |
+          versions=$(node -e '
+            const fs = require("fs");
+            const files = [
+              ["plugins/gtm-sandbox/.claude-plugin/plugin.json", j => j.version],
+              ["plugins/gtm-sandbox/.zcode-plugin/plugin.json", j => j.version],
+              [".claude-plugin/marketplace.json", j => j.plugins[0].version],
+              ["marketplace.json", j => j.plugins[0].version],
+              ["plugins/marketplace.json", j => j.plugins[0].version],
+            ];
+            console.log(files.map(([f, k]) => k(JSON.parse(fs.readFileSync(f, "utf8")))).join("\n"));
+          ')
+          unique=$(printf '%s\n' "$versions" | sort -u)
+          count=$(printf '%s\n' "$unique" | grep -c .)
+          if [ "$count" -ne 1 ]; then
+            echo "version mismatch across manifests/catalogs:" && printf '%s\n' "$unique"; exit 1
+          fi
+          echo "lockstep OK: $unique"
+
+      - name: Syntax-check all shell scripts
+        run: |
+          find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 -n1 bash -n
+          bash -n install.sh
+
+      - name: Run offline test suites
+        run: |
+          rc=0
+          for t in tests/*.sh; do
+            echo "### $t"
+            bash "$t" || rc=1
+          done
+          exit $rc

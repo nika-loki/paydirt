@@ -1,38 +1,92 @@
-# sandbox-bootstrap — GTM Sandbox
+# GTM Sandbox
 
-**Agentic sandbox environments for GTM workflows.** A universal plugin + Agent Skill that scaffolds mono-repos where AI agents build go-to-market automations (enrichment, sequencing, CRM sync, reporting) safely — with `.env.*` secrets management, GitHub environment isolation, and a `development → pilot → production` promotion path with human gates.
+**Pilot-to-production environments for GTM automations, with secrets that never leave the owner's hands.**
 
-## The problem it solves
+[![CI](https://github.com/nika-loki/sandbox-bootstrap/actions/workflows/ci.yml/badge.svg)](https://github.com/nika-loki/sandbox-bootstrap/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/plugin-v0.3.0-blue)](plugins/gtm-sandbox/.claude-plugin/plugin.json)
 
-Agentic GTM workflows need real credentials (CRMs, email platforms, enrichment APIs) long before they're trustworthy. The usual failure modes: secrets committed to git, agents with production keys during development, and "it worked on my laptop" jumps straight to live sends.
+One person — the **owner** — holds every credential locally in `.env.*` files and pushes them to GitHub environment secrets with the `gh` CLI. **Developers** never see a single value: they get permission to *use* secrets by running workflows against gated environments, nothing more, nothing less. That split — "use without seeing" — is enforced by GitHub itself, not by discipline.
 
-GTM Sandbox enforces three invariants instead:
+## Trust model, up front
 
-1. **`.env*` never enters git.** Values live in local `.env.<environment>` files and are synced to GitHub environment secrets with the `gh` CLI — never committed, never pasted into chat.
-2. **Secret values are never printed.** Scripts and agents discuss key *names* only.
-3. **One codebase, three environments.** `development` (sandbox credentials, free-for-all) → `pilot` (real credentials, required reviewer, dry-run default) → `production` (gated, live). Promotion is a dispatch input plus an approval — never a code change.
+- `.env*` files are **never committed** — gitignore guard plus a pre-commit hook that blocks accidents; `.env.example` carries placeholders only.
+- Secret **values** are never printed, logged, pasted into chat, or echoed into agent context — by scripts, agents, or commands. Key *names* are all anyone discusses.
+- Writing environment secrets requires repo **admin** — so only the owner can share them, by default, on any repo.
+- GitHub never displays a secret value to *anyone* after it's set, owner included.
+- Jobs only receive an environment's secrets when they declare that `environment:` — and only after its required reviewers approve.
+- `DRY_RUN` anything-but-`false` is a dry run; `development` and `pilot` default to dry, `production` defaults to live.
 
-## Works everywhere
+Found a security issue? See [SECURITY.md](SECURITY.md).
 
-The skill follows the open [Agent Skills](https://agentskills.io) format (`SKILL.md` + references + scripts + assets) adopted by Claude Code, OpenAI Codex, Gemini CLI, Cursor, ZCode and others. The plugin ships dual manifests (`.claude-plugin/` for Claude Code, `.zcode-plugin/` for ZCode) over the *same* `skills/` and `commands/` directories — one source of truth.
+## Table of contents
 
-| Tool           | Install                                                                                             | Slash commands |
-| -------------- | --------------------------------------------------------------------------------------------------- | -------------- |
-| Any (universal)| `./install.sh` — copies the skill into every detected agent's skills dir (`--tool codex,cursor` to pick) | — |
-| Claude Code    | `/plugin marketplace add <this-repo>` (uses `.claude-plugin/marketplace.json`)                      | ✅ `/sandbox-init`, `/secrets-sync` |
-| ZCode          | Add this repo's `plugins/` directory as a plugin marketplace                                        | ✅ |
-| Codex / others | `./install.sh --tool codex` (or copy `plugins/gtm-sandbox/skills/gtm-sandbox` into your agent's skills directory) | manual path |
+- [How it works](#how-it-works)
+- [Supported tools](#supported-tools)
+- [Install](#install)
+- [Quick start](#quick-start)
+  - [Owner: create a sandbox](#owner-create-a-sandbox)
+  - [Developer: join a sandbox](#developer-join-a-sandbox)
+- [What's in the box](#whats-in-the-box)
+- [Why not…](#why-not)
+- [Repository layout](#repository-layout)
+- [FAQ](#faq)
+- [Development](#development)
+- [License](#license)
 
-`./install.sh --list` shows every known tool and its skills directory; `--remove` uninstalls.
+## How it works
+
+Three GitHub environments, one codebase. The environment — not the branch — carries credentials and blast radius:
+
+| Environment | Secrets file       | Blast radius                                     | Gate                          |
+| ----------- | ------------------ | ------------------------------------------------ | ----------------------------- |
+| development | `.env.development` | Vendor sandbox keys, fake data                   | none                          |
+| pilot       | `.env.pilot`       | Real credentials, small audience, dry-run default | 1 required reviewer, `main`   |
+| production  | `.env.production`  | Real everything, live runs                        | 2 required reviewers, `main`/`v*` |
+
+Promotion is a workflow-dispatch input change plus a human approval — never a code change, never a copied `.env`. The owner rotates a credential by editing one line locally and re-syncing; a developer's access is revoked by removing reviewer status.
+
+## Supported tools
+
+The skill follows the open [Agent Skills](https://agentskills.io) format — one `SKILL.md` works everywhere. The plugin ships manifests per harness over the same `skills/` and `commands/` directories.
+
+| Tool           | Skill | Slash commands | Install via                       |
+| -------------- | ----- | -------------- | --------------------------------- |
+| Claude Code    | ✅    | ✅             | plugin marketplace                |
+| ZCode          | ✅    | ✅             | plugin marketplace                |
+| OpenAI Codex   | ✅    | manual path    | `./install.sh --tool codex`       |
+| Cursor         | ✅    | manual path    | `./install.sh --tool cursor`      |
+| Gemini CLI     | ✅    | manual path    | `./install.sh --tool gemini`      |
+| Any other      | ✅    | manual path    | `./install.sh` (auto-detects)     |
+
+## Install
+
+**Claude Code**
+
+```
+/plugin marketplace add nika-loki/sandbox-bootstrap
+/plugin install gtm-sandbox@sandbox-bootstrap
+```
+
+**ZCode** — Plugin Marketplace → Add → paste this repo's `plugins/` directory, then install **GTM Sandbox**.
+
+**Codex / Cursor / Gemini CLI / anything else**
+
+```
+./install.sh            # auto-detects installed agents
+./install.sh --list     # show every known tool and its skills directory
+./install.sh --remove   # uninstall
+```
 
 ## Quick start
 
-```
-/sandbox-init ~/code/outbound-pilot        # plugin install, or
-```
-…or ask your agent (any tool, skill installed): *"Scaffold a GTM sandbox repo at ~/code/outbound-pilot"*. Either way you get the full layout with `.env.*` gitignored and guarded, the pre-commit hook installed, three GitHub environments, and a names-only dry-run of the first secrets sync.
+### Owner: create a sandbox
 
-Day to day:
+```
+/sandbox-init ~/code/outbound-pilot
+```
+
+Creates the mono-repo (gitignored `.env.*`, pre-commit guard, workflow template, sync script), the GitHub repo and three environments on your confirmation, and runs a names-only dry-run of the first secrets sync. Then:
 
 ```bash
 scripts/sync-secrets.sh --dry-run        # what would change (key names only)
@@ -40,16 +94,37 @@ scripts/sync-secrets.sh                  # development + pilot + production
 scripts/sync-secrets.sh --prune --yes    # also delete remote keys removed locally
 ```
 
+Invite teammates as collaborators (never admin), point them at `/sandbox-join`, and set required reviewers on `pilot`/`production`. Full owner checklist: the skill's `references/team-access.md`.
+
+### Developer: join a sandbox
+
+```
+/sandbox-join owner/outbound-pilot
+```
+
+Clones, verifies `gh` auth, runs a first `development` dispatch to prove the chain works, and tells you exactly what you can do and what to request — a reviewer seat on `pilot` — without ever touching a secret value.
+
 ## What's in the box
 
 | Component             | What it does                                                              |
 | --------------------- | ------------------------------------------------------------------------- |
-| `gtm-sandbox` skill   | The operating model: scaffolding, secrets lifecycle, promotion, sandboxing |
-| `/sandbox-init`       | Bootstraps a new GTM mono-repo with all guards in place                    |
-| `/secrets-sync`       | Runs the secrets sync (dry-run first, values never shown)                   |
-| `sync-secrets.sh`     | `gh secret set --env-file` wrapper with `--dry-run`, `--prune`, env auto-create |
-| Workflow template     | One GitHub Actions workflow serving all three environments with reviewer gates |
-| Guards                | `.gitignore` snippet + pre-commit hook blocking `.env*` staging             |
+| `gtm-sandbox` skill   | Operating model: scaffolding, secrets lifecycle, promotion, team access   |
+| `/sandbox-init`       | Owner bootstrap: mono-repo with all guards in place                       |
+| `/sandbox-join`       | Developer onboarding: access recon + first run + what to request          |
+| `/secrets-sync`       | Runs the secrets sync (dry-run first, values never shown)                 |
+| `sync-secrets.sh`     | `gh secret set --env-file` wrapper: `--dry-run`, `--prune`, env auto-create |
+| Workflow template     | One GitHub Actions workflow serving all three environments                |
+| Guards                | `.gitignore` snippet + pre-commit hook blocking `.env*` staging           |
+
+## Why not…
+
+| Approach                     | Problem it causes here                                              |
+| ---------------------------- | -------------------------------------------------------------------- |
+| Branch-per-environment       | Environments become different *code* instead of different credentials |
+| 1Password / Doppler vaults   | Extra infrastructure and accounts; GitHub permissions already fit     |
+| Repo-level secrets for everything | Every collaborator with admin can read-write everything          |
+| Encrypted secrets in git     | Keys live in git history forever; rotation means rewriting history    |
+| Handing `.env.production` to on-call | A file on someone's laptop is not a permission boundary         |
 
 ## Repository layout
 
@@ -58,26 +133,34 @@ plugins/gtm-sandbox/            the plugin (single source of truth)
   .claude-plugin/plugin.json    Claude Code manifest
   .zcode-plugin/plugin.json     ZCode manifest
   skills/gtm-sandbox/           SKILL.md, references/, scripts/, assets/
-  commands/                     sandbox-init, secrets-sync
+  commands/                     sandbox-init, sandbox-join, secrets-sync
 .claude-plugin/marketplace.json Claude Code marketplace catalog (repo root)
 marketplace.json                root catalog for ZCode and generic consumers
 plugins/marketplace.json        local dev catalog for ZCode testing
 install.sh                      universal skill installer (any Agent Skills tool)
-tests/                          offline test suite (mock gh, fake HOME)
+tests/                          offline test suite — 37 checks, no network
 docs/DESIGN.md                  architecture decisions
 ```
 
-## Security model
+## FAQ
 
-- Secrets exist in exactly two places: local `.env.*` (gitignored) and GitHub environment secrets (encrypted at rest by GitHub, readable only by jobs declaring the environment).
-- `DRY_RUN` anything-but-`false` is a dry run; development and pilot default to dry.
-- Recommended: gitleaks in CI as a second net, least-privilege `GITHUB_TOKEN` permissions (the workflow template ships `permissions: {}`), scoped-down pilot credentials, required reviewers on `pilot` and `production`.
+**Can a developer ever see a secret value?** No. Values exist in the owner's local files and in GitHub's encrypted secret storage; neither is ever displayed to anyone after syncing.
 
-See the skill's `references/sandbox.md` after installation for the full model.
+**What exactly does a developer get permission to?** Running workflows that inject a given environment's secrets. `development` runs are open to collaborators; `pilot`/`production` runs require an environment reviewer's approval. That's the entire access model.
+
+**How do I revoke access?** Remove the person's reviewer status on the environment (usage) and, if you suspect misuse, rotate the credential from the vendor dashboard and re-sync (values).
+
+**Does this work on private repos?** Yes — and org-owned repos can additionally restrict which repos may use an environment.
+
+**Is this agent-specific?** No. The skill is standard Agent Skills format; the workflow pattern (environments + dispatch + reviewers) is plain GitHub Actions with any runtime you like.
 
 ## Development
 
-Edit under `plugins/gtm-sandbox/`, bump `version` in **both** manifests (`.claude-plugin/plugin.json` and `.zcode-plugin/plugin.json`) and mirror it into the marketplace catalogs, then refresh the marketplace in your tool and update the plugin. Run the offline tests: `bash tests/test-sync-secrets.sh && bash tests/test-pre-commit.sh && bash tests/test-install.sh`.
+```bash
+bash tests/test-sync-secrets.sh && bash tests/test-pre-commit.sh && bash tests/test-install.sh
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the version-bump protocol (both manifests + all catalogs in lockstep) and [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## License
 

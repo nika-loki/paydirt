@@ -40,6 +40,6 @@ Work through these steps in order, confirming repository creation (step 5) with 
 
 6. **First sync**: run `scripts/sync-secrets.sh --dry-run` from the project root and show the names-only summary. If it looks right and the user agrees, run it for real (development only is fine: `--env development`).
 
-7. **Summarize** for the user: layout created, git guard active, environments created, development secrets synced, and the exact next steps — fill `.env.pilot` when pilot credentials exist, run `scripts/sync-secrets.sh --env pilot`, and dispatch the workflow with `environment: pilot`.
+7. **Summarize** for the user: layout created, git guard active, environments created, development secrets synced, and the exact next steps — fill `.env.pilot` when pilot credentials exist, run `scripts/sync-secrets.sh --env pilot`, and dispatch the workflow with `environment: pilot`. When teammates join later, point them at `/sandbox-join` (see `references/team-access.md` for the owner/reviewer/developer permission model).
 
 If any step fails (no `gh`, no auth, no repo access), stop at that step, explain what's missing, and leave the local scaffolding intact.

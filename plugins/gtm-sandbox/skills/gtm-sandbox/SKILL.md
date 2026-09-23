@@ -15,6 +15,8 @@ Run GTM automations (enrichment, sequencing, CRM sync, reporting agents) through
 
 The same code runs in all three; only the environment (and therefore the secrets and guard rails) changes. Promotion is a workflow-dispatch input change plus a human approval, never a code change.
 
+Teams run a strict split: **the owner** holds all credential values locally and is the only one who can write environment secrets (repo admin, enforced by GitHub); **developers** never see values — they get permission to *use* secrets via workflow runs and environment reviewer status. See `references/team-access.md`.
+
 ## Invariants — never violated
 
 1. `.env*` files are never committed. `.gitignore` excludes them and a pre-commit hook blocks accidents; `.env.example` carries placeholders only.
@@ -33,6 +35,10 @@ Fastest path: the `sandbox-init` command (`/sandbox-init <path>`), available whe
 5. Seed `.env.development` from `.env.example` with sandbox-grade values, then run `scripts/sync-secrets.sh --dry-run`.
 
 Copy templates from this skill's `assets/` directory (`env/`, `hooks/`, `workflows/`, plus the gitignore snippet); the script comes from `scripts/sync-secrets.sh`.
+
+## Joining an existing sandbox (developers)
+
+A developer joining a repo someone else owns runs `sandbox-join` (`/sandbox-join <owner/repo>`): clone, `gh auth` check, read-only access recon, a first `development` dispatch to prove the chain, and a summary of what they can do versus what to request from the owner. They never need — and never get — secret values. The full owner/developer permission model lives in `references/team-access.md`.
 
 ## Day-to-day secrets
 
@@ -73,8 +79,9 @@ Sandboxing model in depth (local guards, CI isolation, gitleaks, token scoping):
 
 ## Reference index
 
-| File                     | Read when                                              |
-| ------------------------ | ------------------------------------------------------ |
-| `references/secrets.md`  | Syncing, rotating, pruning, or troubleshooting secrets |
-| `references/promotion.md`| Setting up gates or promoting pilot → production       |
-| `references/sandbox.md`  | Hardening how agents themselves touch secrets           |
+| File                       | Read when                                                |
+| -------------------------- | -------------------------------------------------------- |
+| `references/secrets.md`    | Syncing, rotating, pruning, or troubleshooting secrets   |
+| `references/promotion.md`  | Setting up gates or promoting pilot → production         |
+| `references/team-access.md`| Sharing secret access with teammates; onboarding a dev   |
+| `references/sandbox.md`    | Hardening how agents themselves touch secrets             |
